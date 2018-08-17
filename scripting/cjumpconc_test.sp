@@ -219,22 +219,13 @@ public Action EventRestartRound(Event event, const char[] name, bool dontBroadca
 public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client;
 	client = GetClientOfUserId(event.GetInt("userid"));
-	int class = view_as <int>(TF2_GetPlayerClass(client));
-	classFormat(class);
+	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
 	if (IsClassAllowed(g_classString)) {
 		for (int i = 0; i < 10; i++) {
 			if (holding[client][i]) {
 				ThrowNade(nadeId[client][i], false);
 			}
 		}
-		/*
-		while (!holding[client][nr] && nr < cvConcMax.IntValue) {
-			nr++;
-		}
-		if (nr < cvConcMax.IntValue) {
-			ThrowNade(client, false);
-		}
-		*/
 	}
 	else if (IsClassAllowed(g_classString)) {
 		for (int i = 0; i < 10; i++) {
@@ -242,44 +233,18 @@ public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcas
 				ThrowNade(nadeId[client][i], false);
 			}
 		}
-		/*
-		while (!holding[client][nr] && nr < cvFragMax.IntValue) {
-			nr++;
-		}
-		if (nr < cvFragMax.IntValue) {
-			ThrowNade(client, false);
-		}
-		*/
 	}
 }
 
 // fix for changing class -> removing concs so people cant cheat 
 public Action EventPlayerChangeClass(Event event, const char[] name, bool dontBroadcast) {
 	int
-		client = GetClientOfUserId(event.GetInt("userid"))
-		, class = view_as <int>(TF2_GetPlayerClass(client));
+		client = GetClientOfUserId(event.GetInt("userid"));
 
-	classFormat(class);
+	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
 
 	if (!IsClassAllowed(g_classString)) {
-		for (int i = 0; i < 10; i++) {
-			if (nadeId[client][i] != -1 && IsValidEntity(nadeId[client][i])) {
-				RemoveEdict(nadeId[client][i]);
-				nadeId[client][i] = -1;
-			}
-			else if (nadeId[client][i] != -1) {
-				nadeId[client][i] = -1;
-			}
-			nadeTime[client][i] = -1.0;
-			holding[client][i] = false;
-			nadeType[client][i] = -1;
-			delete timeTimer[client][i];
-		}
-		nadeDelay[client] = buttonDown[client] =  false;
-		// concHelp[client] = false;
-		concToUse[client] = -1;
-		nadesUsed[client] = 0;
-		// personalTimer[client] = -1.0;
+		resetClient(client);
 	}
 }
 
@@ -398,12 +363,6 @@ public Action Command_UnConc(int client, int args) {
 
 public Action Command_ConcHelp(int client, int args) {
 	ReplyToCommand(client, "Feature disabled because it's inefficient coding-wise and not even very helpful.");
-	// if (concHelp[client]) {
-	//	concHelp[client] = false;
-	//}
-	// else {
-	//	concHelp[client] = true;
-	//}
 	return Plugin_Handled;
 }
 
@@ -412,14 +371,6 @@ public Action Command_ConcTimer(int client, int args) {
 		if (args > 0) {
 			char arg[32];
 			GetCmdArg(1, arg, sizeof(arg));
-			/*
-			for (int i = 0; i < strlen(arg); i++) {
-				if (!IsCharNumeric(arg[i])) {
-					ReplyToCommand(client, "Value must be an integer.");
-					return Plugin_Handled;
-				}
-			}
-			*/
 			float fArg = StringToFloat(arg);
 			if (fArg < 3.0) { 
 				ReplyToCommand(client, "Value must be 3.0 or higher"); 
@@ -571,7 +522,6 @@ public void PhysUp(int ent) {
 			float absOri[3];
 			Entity_GetAbsOrigin(ent, absOri);
 		
-			// frameTimer[i][j] = 
 			for (int k = 0; k <= 2; k++) {
 				lastOri[i][j][1][k] = lastOri[i][j][0][k];
 				lastOri[i][j][0][k] = absOri[k];
@@ -699,8 +649,6 @@ void ThrowNade(int id, bool thrown = true) {
 				// tempblock
 				// speed[2]+= cvNadeThrowAngle.FloatValue;
 				
-				
-				// speed[0]*= cvConcThrowSpeed.FloatValue; speed[1]*= cvConcThrowSpeed.FloatValue; speed[2]*= cvConcThrowSpeed.FloatValue;
 				ScaleVector(speed, cvNadeThrowSpeed.FloatValue);
 				if (cvNadePhysics.IntValue > 0) {
 					GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
@@ -748,8 +696,7 @@ void ThrowNade(int id, bool thrown = true) {
 			if (cvNadeTrail.IntValue == 1) {
 				int color[4];
 				// red 
-				if (GetClientTeam(client) == 2) { 
-
+				if (GetClientTeam(client) == 2) {
 					color = { 255, 10, 10, 255 };
 				}
 				else if (GetClientTeam(client) == 3) {
@@ -1130,7 +1077,7 @@ void resetClient(int client) {
 	nadesUsed[client] = 0;
 }
 
-void Entity_GetAbsOrigin(int entity, float vec[3]) {
+void Entity_GetAbsOrigin(int entity, float vec[3]){
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", vec);
 }
 
