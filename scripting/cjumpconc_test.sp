@@ -5,7 +5,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.3.0"
+#define PLUGIN_VERSION "1.3.1"
 #define DMG_TIMEBASED (DMG_PARALYZE | DMG_NERVEGAS | DMG_POISON | DMG_RADIATION | DMG_DROWNRECOVER | DMG_ACID | DMG_SLOWBURN)
 #define SND_NADE_CONC "weapons/explode5.wav"
 #define SND_THROWNADE "weapons/grenade_throw.wav"
@@ -16,7 +16,7 @@
 // 950.0, 0.4, 2.25
 
 ConVar
-	cvConcEnabled
+	  cvConcEnabled
 	, cvConcClass
 	, cvConcRadius
 	, cvConcMax
@@ -48,7 +48,7 @@ ConVar
 	, cvNadeStartHeight
 	, cvConcDebug;
 int
-	g_iRingMOdel
+	  g_iRingMOdel
 	, g_iNadesUsed[MAXPLAYERS+1]
 	, g_iConcToUse[MAXPLAYERS+1]
 	, g_iNadeID[MAXPLAYERS+1][10]
@@ -56,14 +56,14 @@ int
 	, g_iNadeType[MAXPLAYERS+1][10]
 	, g_iFrameTimer[MAXPLAYERS+1][10];
 bool
-	g_bHolding[MAXPLAYERS+1][10]
+	  g_bHolding[MAXPLAYERS+1][10]
 	, g_bNadeDelay[MAXPLAYERS+1]
 	, g_bButtonDown[MAXPLAYERS+1]
 	, g_bCanThrow
 	, g_bWaitOver
 	, g_bLateLoad;
 float
-	g_fNadeTime[MAXPLAYERS+1][10]
+	  g_fNadeTime[MAXPLAYERS+1][10]
 	, g_fPlayersInRange[MAXPLAYERS+1]
 	, g_fHoldingArea[3] = { -10000.0, ... }
 	, g_fPersonalTimer[MAXPLAYERS+1]
@@ -71,9 +71,9 @@ float
 	, g_fLastTime2[MAXPLAYERS+1][10]
 	, g_fLastOri[MAXPLAYERS+1][10][2][3];
 char
-	g_classString[16];
+	  g_classString[16];
 Handle
-	g_hTimer[MAXPLAYERS+1][10];
+	  g_hTimer[MAXPLAYERS+1][10];
 
 public Plugin myinfo = {
 	name = "Concussion Grenade",
@@ -121,6 +121,7 @@ public void OnPluginStart() {
 	RegConsoleCmd("-conc", Command_UnConc);
 	RegConsoleCmd("sm_conchelp", Command_ConcHelp);
 	RegConsoleCmd("sm_conctimer", Command_ConcTimer);
+
 	HookEvent("teamplay_restart_round", EventRestartRound);
 	HookEvent("player_death", EventPlayerDeath, EventHookMode_Pre);
 	HookEvent("teamplay_round_start", MainEvents);
@@ -158,29 +159,19 @@ public void OnMapStart() {
 	AddFileToDownloadsTable("materials/conc/w_grenade_conc_blu.vtf");
 	AddFileToDownloadsTable("materials/conc/w_grenade_conc_red.vtf");
 	AddFileToDownloadsTable("sound/weapons/det_pack_timer62.wav");
+
 	g_iRingMOdel = PrecacheModel("sprites/laser.vmt", true);
+
 	PrecacheSound(SND_THROWNADE, true);
 	PrecacheSound(SND_NADE_CONC, true);
 	PrecacheSound(SND_NADE_CONC_TIMER, true);
 	PrecacheSound(SND_NADE_CONC_HIGHPITCH, true);
 	PrecacheModel(MDL_CONC, true);
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.vvd");
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.sw.vtx");
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.phy");
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.mdl");
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.dx90.vtx");
-	AddFileToDownloadsTable("models/conc/w_grenade_conc.dx80.vtx");
-	AddFileToDownloadsTable("materials/conc/w_grenade_conc_blu.vmt");
-	AddFileToDownloadsTable("materials/conc/w_grenade_conc_red.vmt");
-	AddFileToDownloadsTable("materials/conc/w_grenade_conc_blu.vtf");
-	AddFileToDownloadsTable("materials/conc/w_grenade_conc_red.vtf");
-	AddFileToDownloadsTable("sound/weapons/det_pack_timer62.wav");
 	
 	if (!g_bLateLoad) {
 		g_bCanThrow = g_bWaitOver = false;
 	}
 	for (int i = 1; i <= MaxClients; i++) {
-		
 		g_iNadesUsed[i] = 0;
 		g_iConcToUse[i] = -1;
 		g_bNadeDelay[i] = g_bButtonDown[i] = false;
@@ -216,9 +207,7 @@ public void OnClientDisconnect(int client) {
 }
 
 public Action EventRestartRound(Event event, const char[] name, bool dontBroadcast) {
-	if (cvConcEnabled.IntValue == 1 && cvNadeWaitPeriod.IntValue == 1) {
-		g_bWaitOver = true;
-	}
+	g_bWaitOver = (cvConcEnabled.IntValue == 1 && cvNadeWaitPeriod.IntValue == 1);
 }
 
 public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
@@ -226,13 +215,6 @@ public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcas
 
 	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
 	if (IsClassAllowed(g_classString)) {
-		for (int i = 0; i < 10; i++) {
-			if (g_bHolding[client][i]) {
-				ThrowNade(g_iNadeID[client][i], false);
-			}
-		}
-	}
-	else if (IsClassAllowed(g_classString)) {
 		for (int i = 0; i < 10; i++) {
 			if (g_bHolding[client][i]) {
 				ThrowNade(g_iNadeID[client][i], false);
@@ -281,7 +263,7 @@ public Action RoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	// PrintToChatAll("EventRoundEnd");
 	// PrintToServer("EventRoundEnd");
 	if (StrEqual(name, "teamplay_game_over")) {
-		g_bWaitOver = g_bCanThrow = false;
+		g_bWaitOver = false;
 		g_iRealStart = 0;
 	}
 	g_bCanThrow = false;
@@ -290,56 +272,65 @@ public Action RoundEnd(Event event, const char[] name, bool dontBroadcast) {
 }
 
 public void OnEntityDestroyed(int ent) {
-	if (cvConcEnabled.IntValue == 1) {
-		if (IsValidEntity(ent)) {
-			int nadeInfo[2];
-			nadeInfo = FindNade(ent);
-			if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-				int
-					client = nadeInfo[0]
-					, number = nadeInfo[1];
-
-				g_fNadeTime[client][number] = -2.0;
-				g_iNadeType[client][number] = g_iNadeID[client][number] = -1;
-				delete g_hTimer[client][number];
-				g_iNadesUsed[client]--;
-			}
-		}
+	if (!cvConcEnabled.BoolValue || !IsValidEntity(ent)) {
+		return;
 	}
+
+	int nadeInfo[2];
+	nadeInfo = FindNade(ent);
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		return;
+	}
+
+	int client = nadeInfo[0];
+	int number = nadeInfo[1];
+
+	g_fNadeTime[client][number] = -2.0;
+	g_iNadeType[client][number] = -1;
+	g_iNadeID[client][number] = -1;
+
+	delete g_hTimer[client][number];
+
+	g_iNadesUsed[client]--;
 }
 
 public Action Command_Conc(int client, int args) {
-	if (cvConcEnabled.IntValue == 1 && g_bCanThrow) {
-		int class = view_as<int>(TF2_GetPlayerClass(client));
-		classFormat(class);
+	if (!cvConcEnabled.BoolValue || !g_bCanThrow) {
+		return Plugin_Handled;
+	}
 
-		if (!IsPlayerAlive(client) || IsFakeClient(client) || IsClientObserver(client) || g_bNadeDelay[client] || !IsClassAllowed(g_classString) || g_bButtonDown[client]) {
+	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
+
+	if (!IsPlayerAlive(client) || IsFakeClient(client) || IsClientObserver(client) || g_bNadeDelay[client] || !IsClassAllowed(g_classString) || g_bButtonDown[client]) {
+		return Plugin_Handled;
+	}
+
+	for (int i = 0; i < 10; i++) {
+		if (g_bHolding[client][i]) {
 			return Plugin_Handled;
 		}
-		for (int i = 0; i < 10; i++) {
-			if (g_bHolding[client][i] == true) {
-				return Plugin_Handled;
-			}
-		}
-		if (g_iNadesUsed[client] < cvConcMax.IntValue) {
-			// new tNade = MakeNade(client);
-			int tNade = MakeNade2(client);
-			if (tNade > -1) {
-				g_bHolding[client][tNade] = g_bNadeDelay[client] = g_bButtonDown[client] = true;
-				g_iNadesUsed[client]++;
-				g_fNadeTime[client][tNade] = 0.0;
-				CreateTimer(1.0, beepTimer, g_iNadeID[client][tNade]);
-				// g_fLastTime2[client][number] = GetGameTime();
-				CreateTimer(cvNadeDelay.FloatValue, delayTimer, client);
-				if (cvNadeSoundMode.IntValue == 0) {
-					EmitSoundToClient(client, SND_NADE_CONC_TIMER);
-				}
-				else {
-					EmitSoundToAll(SND_NADE_CONC_TIMER, client);
-				}
-			}
-		}
 	}
+
+	int tNade;
+	if (g_iNadesUsed[client] >= cvConcMax.IntValue || ((tNade = MakeNade2(client)) <= -1)) {
+		return Plugin_Handled;
+	}
+
+	g_bHolding[client][tNade] = g_bNadeDelay[client] = g_bButtonDown[client] = true;
+	g_iNadesUsed[client]++;
+	g_fNadeTime[client][tNade] = 0.0;
+
+	CreateTimer(1.0, beepTimer, g_iNadeID[client][tNade]);
+	// g_fLastTime2[client][number] = GetGameTime();
+	CreateTimer(cvNadeDelay.FloatValue, delayTimer, client);
+	if (cvNadeSoundMode.BoolValue) {
+		EmitSoundToAll(SND_NADE_CONC_TIMER, client);
+	}
+	else {
+		EmitSoundToClient(client, SND_NADE_CONC_TIMER);
+	}
+		
+	
 	return Plugin_Handled;
 }
 
@@ -398,14 +389,15 @@ int GetFreeNadeSlot(int client) {
 
 int FindNade(int id) {
 	int value[2] = { -1, -1 };
-	if (id > 0) {
-		for (int i = 1; i <= MaxClients; i++) {
-			for (int j = 0; j < 10; j++) {
-				if (g_iNadeID[i][j] == id) {
-					value[0] = i;
-					value[1] = j;
-					return value;
-				}
+	if (id <= 0) {
+		return value;
+	}
+	for (int i = 1; i <= MaxClients; i++) {
+		for (int j = 0; j < 10; j++) {
+			if (g_iNadeID[i][j] == id) {
+				value[0] = i;
+				value[1] = j;
+				return value;
 			}
 		}
 	}
@@ -415,9 +407,8 @@ int FindNade(int id) {
 int MakeNade2(int client, int type = 0) {
 	int number = GetFreeNadeSlot(client);
 	if (number > -1) {
-		char
-			model[255]
-			, skin[8];
+		char model[255];
+		char skin[8];
 
 		if (type == 0) {
 			strcopy(model, sizeof(model), MDL_CONC);
@@ -490,64 +481,63 @@ public Action fOnTakeDamage(int victim, int &attacker, int &inflictor, float &da
 	// PrintToChatAll("Prop touched %s",!attacker ? "world" : szAttacker);
 	int nadeInfo[2];
 	nadeInfo = FindNade(victim);
-	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			client = nadeInfo[0]
-			, number = nadeInfo[1];
 
-		if (IsValidEntity(g_iNadeID[client][number])) {
-			float
-				now = GetGameTime()
-				, delay = cvConcBounceDelay.FloatValue;
-
-			if (now - g_fLastTime[client][number] > delay) {
-				BounceConc2(victim, damagePosition);
-			}
-			g_fLastTime[client][number] = now;
-		}
-		
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		return Plugin_Handled;
 	}
+
+	int client = nadeInfo[0];
+	int number = nadeInfo[1];
+
+	if (!IsValidEntity(g_iNadeID[client][number])) {
+		return Plugin_Handled;
+	}
+
+	float now = GetGameTime();
+	float delay = cvConcBounceDelay.FloatValue;
+
+	if (now - g_fLastTime[client][number] > delay) {
+		BounceConc2(victim, damagePosition);
+	}
+	g_fLastTime[client][number] = now;
+	
+	
 	return Plugin_Handled;
 }
 
-public void PhysUp(int ent) {
+void PhysUp(int ent) {
 	// PrintToChatAll("something");
 	int nadeInfo[2];
 	nadeInfo = FindNade(ent);
-	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			i = nadeInfo[0]
-			, j = nadeInfo[1];
-		
-		// Saving last 2 origins to calculate speed (cos tf2 is fucked when it comes to finding speed from prop_physics)
-		if (g_iFrameTimer[i][j] == cvFrameTimer.IntValue) {
-			float absOri[3];
-			Entity_GetAbsOrigin(ent, absOri);
-		
-			for (int k = 0; k <= 2; k++) {
-				g_fLastOri[i][j][1][k] = g_fLastOri[i][j][0][k];
-				g_fLastOri[i][j][0][k] = absOri[k];
-			}
-			
-			g_iFrameTimer[i][j] = 0;
-		}
-		g_iFrameTimer[i][j]++;
-	}	
-	else {
-		if (cvConcDebug.IntValue == 1) { 
-			PrintToChatAll("INVALID SHIZZLE"); 
-		}
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		PrintToChatAll("INVALID SHIZZLE");
+		return;
 	}
+	int i = nadeInfo[0];
+	int j = nadeInfo[1];
+	
+	// Saving last 2 origins to calculate speed (cos tf2 is fucked when it comes to finding speed from prop_physics)
+	if (g_iFrameTimer[i][j] == cvFrameTimer.IntValue) {
+		float absOri[3];
+		Entity_GetAbsOrigin(ent, absOri);
+	
+		for (int k = 0; k <= 2; k++) {
+			g_fLastOri[i][j][1][k] = g_fLastOri[i][j][0][k];
+			g_fLastOri[i][j][0][k] = absOri[k];
+		}
+		
+		g_iFrameTimer[i][j] = 0;
+	}
+	g_iFrameTimer[i][j]++;
 }
 
 
 int BounceConc2(int entity, float damagePos[3]) {
-	float
-		vOrigin[3]
-		, vHeading[3]
-		, vAngles[3]
-		, vNormal[3]
-		, dotProduct;
+	float vOrigin[3];
+	float vHeading[3];
+	float vAngles[3];
+	float vNormal[3];
+	float dotProduct;
 
 	GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vOrigin);
 	SubtractVectors(damagePos, vOrigin, vHeading);
@@ -569,11 +559,9 @@ int BounceConc2(int entity, float damagePos[3]) {
 	int nadeInfo[2];
 	nadeInfo = FindNade(entity);
 	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			client = nadeInfo[0]
-			, number = nadeInfo[1];
-		float
-			vVec[3];
+		int client = nadeInfo[0];
+		int number = nadeInfo[1];
+		float vVec[3];
 		
 		// PrintToChat(client, "g_fLastOri[0] %.2f, %.2f, %.2f", g_fLastOri[client][number][0], g_fLastOri[client][number][1], g_fLastOri[client][number][2]);
 		// PrintToChat(client, "nowOri[3] %.2f, %.2f, %.2f", vOrigin[0], vOrigin[1], vOrigin[2]);
@@ -584,9 +572,8 @@ int BounceConc2(int entity, float damagePos[3]) {
 		float len = GetVectorLength(vVec);
 		
 		if (len > 20.0) {
-			float
-				vBounceVec[3]
-				, vNewAngles[3];
+			float vBounceVec[3];
+			float vNewAngles[3];
 			// PrintToChat(client, "Impact: [%.2f, %.2f, %.2f] |%.2f|", vVec[0], vVec[1], vVec[2], len);
 			dotProduct = GetVectorDotProduct(vNormal, vVec)*-1.0;
 			
@@ -620,100 +607,102 @@ bool TEF_ExcludeEntity(int entity, int contentsMask, any data) {
 void ThrowNade(int id, bool thrown = true) {
 	int nadeInfo[2];
 	nadeInfo = FindNade(id);
-	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			client = nadeInfo[0]
-			, number = nadeInfo[1];
-		if (IsValidEntity(g_iNadeID[client][number])) {
-			// get position and angles
-			float
-				startpt[3]
-				, angle[3]
-				, speed[3]
-				, playerspeed[3];
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		if (cvConcDebug.IntValue == 1) { 
+			PrintToServer("info not found for concId %i", id);
+		}
+		return;
+	}
+	int client = nadeInfo[0];
+	int number = nadeInfo[1];
+	if (IsValidEntity(g_iNadeID[client][number])) {
+		// get position and angles
+		float startpt[3];
+		float angle[3];
+		float speed[3];
+		float playerspeed[3];
 
-			GetClientEyePosition(client, startpt);
+		GetClientEyePosition(client, startpt);
 
-			for (int i = 0; i <= 2; i++) {
-				angle[i] = GetRandomFloat(-180.0, 180.0);
-			}
+		for (int i = 0; i <= 2; i++) {
+			angle[i] = GetRandomFloat(-180.0, 180.0);
+		}
+		
+		if (thrown) {
+			g_bHolding[client][number] = false;
+			GetClientEyeAngles(client, angle);
 			
-			if (thrown) {
-				g_bHolding[client][number] = false;
-				GetClientEyeAngles(client, angle);
-				
-				float angle2[3];
-				angle2 = angle;
-				angle[1] += cvNadeAngleCorrection.FloatValue;
-				angle2[0] -= cvNadeThrowAngle.FloatValue;
-				GetAngleVectors(angle2, speed, NULL_VECTOR, NULL_VECTOR);
-				// PrintToChat(client, "angles: [%.2f, %.2f, %.2f]", angle2[0], angle2[1], angle2[2]);
-				// tempblock
-				// speed[2]+= cvNadeThrowAngle.FloatValue;
-				
-				ScaleVector(speed, cvNadeThrowSpeed.FloatValue);
-				if (cvNadePhysics.IntValue > 0) {
-					GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
-					if (cvNadePhysics.IntValue == 1) {
-						for (int i = 0; i < 2; i++) {
-							if (playerspeed[i] >= 0.0 && speed[i] < 0.0) {
-								playerspeed[i] = 0.0;
-							}
-							else if (playerspeed[i] < 0.0 && speed[i] >= 0.0) {
-								playerspeed[i] = 0.0;
-							}
+			float angle2[3];
+			angle2 = angle;
+			angle[1] += cvNadeAngleCorrection.FloatValue;
+			angle2[0] -= cvNadeThrowAngle.FloatValue;
+			GetAngleVectors(angle2, speed, NULL_VECTOR, NULL_VECTOR);
+			// PrintToChat(client, "angles: [%.2f, %.2f, %.2f]", angle2[0], angle2[1], angle2[2]);
+			// tempblock
+			// speed[2]+= cvNadeThrowAngle.FloatValue;
+			
+			ScaleVector(speed, cvNadeThrowSpeed.FloatValue);
+			if (cvNadePhysics.IntValue > 0) {
+				GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
+				if (cvNadePhysics.IntValue == 1) {
+					for (int i = 0; i < 2; i++) {
+						if (playerspeed[i] >= 0.0 && speed[i] < 0.0) {
+							playerspeed[i] = 0.0;
 						}
-						if (playerspeed[2] < 0.0) {
-							playerspeed[2] = 0.0;
+						else if (playerspeed[i] < 0.0 && speed[i] >= 0.0) {
+							playerspeed[i] = 0.0;
 						}
 					}
-					AddVectors(speed, playerspeed, speed);
+					if (playerspeed[2] < 0.0) {
+						playerspeed[2] = 0.0;
+					}
 				}
-				float sHeight = cvNadeStartHeight.FloatValue;
-				if (sHeight!= 0.0) {
-					startpt[2] += sHeight;
-				}
-				TeleportEntity(g_iNadeID[client][number], startpt, angle, speed);
+				AddVectors(speed, playerspeed, speed);
 			}
-			else {
-				float altstartpt[3];
-				GetClientAbsOrigin(client, altstartpt);
-				GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
-				ScaleVector(playerspeed, cvNadeHHDisDecrease.FloatValue);
-				
-				float pSpeedLen = GetVectorLength(playerspeed);
-				if (pSpeedLen > 288.0) {
-					pSpeedLen = 288.0/pSpeedLen;
-					ScaleVector(playerspeed, pSpeedLen);
-				}
-				
-				SubtractVectors(altstartpt, playerspeed, altstartpt);
-				altstartpt[2] += cvNadeHHHeight.FloatValue;
-				TeleportEntity(g_iNadeID[client][number], altstartpt, angle, NULL_VECTOR);
+			float sHeight = cvNadeStartHeight.FloatValue;
+			if (sHeight!= 0.0) {
+				startpt[2] += sHeight;
 			}
-			if (cvNadeDifGrav.FloatValue!= 1.0) {
-				SetEntityGravity(g_iNadeID[client][number], cvNadeDifGrav.FloatValue);
+			TeleportEntity(g_iNadeID[client][number], startpt, angle, speed);
+		}
+		else {
+			float altstartpt[3];
+			GetClientAbsOrigin(client, altstartpt);
+			GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
+			ScaleVector(playerspeed, cvNadeHHDisDecrease.FloatValue);
+			
+			float pSpeedLen = GetVectorLength(playerspeed);
+			if (pSpeedLen > 288.0) {
+				pSpeedLen = 288.0/pSpeedLen;
+				ScaleVector(playerspeed, pSpeedLen);
 			}
 			
-			if (cvNadeTrail.IntValue == 1) {
-				int color[4];
-				// red 
-				if (GetClientTeam(client) == 2) {
+			SubtractVectors(altstartpt, playerspeed, altstartpt);
+			altstartpt[2] += cvNadeHHHeight.FloatValue;
+			TeleportEntity(g_iNadeID[client][number], altstartpt, angle, NULL_VECTOR);
+		}
+		if (cvNadeDifGrav.FloatValue!= 1.0) {
+			SetEntityGravity(g_iNadeID[client][number], cvNadeDifGrav.FloatValue);
+		}
+		
+		if (cvNadeTrail.IntValue == 1) {
+			int color[4];
+
+			switch (GetClientTeam(client)) {
+				case 2: {
 					color = { 255, 10, 10, 255 };
 				}
-				else if (GetClientTeam(client) == 3) {
+				case 3: {
 					color = { 10, 10, 255, 255 };
 				}
-				else {
+				default: {
 					color = { 10, 255, 10, 255 };
 				}
-				ShowTrail(g_iNadeID[client][number], color);
 			}
-			EmitSoundToAll(SND_THROWNADE, client);
+
+			ShowTrail(g_iNadeID[client][number], color);
 		}
-	}
-	else if (cvConcDebug.IntValue == 1) { 
-		PrintToServer("info not found for concId %i", id);
+		EmitSoundToAll(SND_THROWNADE, client);
 	}
 }
 
@@ -721,53 +710,49 @@ Action beepTimer(Handle timer, any concId) {
 	// getting client and nade number info
 	int nadeInfo[2];
 	nadeInfo = FindNade(concId);
-	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			client = nadeInfo[0]
-			, number = nadeInfo[1];
-		
-		// getting max time for this clients nades (default/customized)
-		float timerToUse;
-		if (g_fPersonalTimer[client] != -1.0) {
-			timerToUse = g_fPersonalTimer[client];
-		}
-		else { timerToUse = cvNadeTimer.FloatValue;
-		}
-		timerToUse -= 1.0;
-		
-		float diffr = timerToUse-g_fNadeTime[client][number];
-		// PrintToChat(client, "diffr = %.2f", diffr);
-		if (diffr > 0.01) {
-			// if g_bHolding make sound come from client pos, else from conc itself, unless sounds are off, then always only for client
-			if (cvNadeSoundMode.IntValue == 0) {
-				sEmitSound(client, client, (diffr <= 0.41));
-			}
-			else {
-				sEmitSound(-1, (g_bHolding[client][number]) ? client : concId, (diffr <= 0.41));
-			}
-			
-			// make sure timer knows for when to set next beep
-			if (diffr > 1.41) {
-				CreateTimer(1.0, beepTimer, concId);
-				g_fNadeTime[client][number] += 1.0;
-				// PrintToChat(client, "1 sec delay");
-			}
-			else {
-				float tempish = (diffr > 0.41) ? (diffr - 0.4) : 0.4;
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		return Plugin_Handled;
+	}
+	int client = nadeInfo[0];
+	int number = nadeInfo[1];
+	
+	// getting max time for this clients nades (default/customized)
+	float timerToUse = (g_fPersonalTimer[client] != -1.0) ? g_fPersonalTimer[client] : cvNadeTimer.FloatValue;
 
-				CreateTimer(tempish, beepTimer, concId);
-				g_fNadeTime[client][number] += tempish;
-			}
+	timerToUse -= 1.0;
+	
+	float diffr = timerToUse-g_fNadeTime[client][number];
+	// PrintToChat(client, "diffr = %.2f", diffr);
+	if (diffr > 0.01) {
+		// if g_bHolding make sound come from client pos, else from conc itself, unless sounds are off, then always only for client
+		if (cvNadeSoundMode.IntValue == 0) {
+			sEmitSound(client, client, (diffr <= 0.41));
 		}
 		else {
-			if (g_bHolding[client][number]) {
-				ThrowNade(concId, false);
-				g_bHolding[client][number] = false;
-				NadeExplode(concId, true);
-			}
-			else {
-				NadeExplode(concId, false);
-			}
+			sEmitSound(-1, (g_bHolding[client][number]) ? client : concId, (diffr <= 0.41));
+		}
+		
+		// make sure timer knows for when to set next beep
+		if (diffr > 1.41) {
+			CreateTimer(1.0, beepTimer, concId);
+			g_fNadeTime[client][number] += 1.0;
+			// PrintToChat(client, "1 sec delay");
+		}
+		else {
+			float tempish = (diffr > 0.41) ? (diffr - 0.4) : 0.4;
+
+			CreateTimer(tempish, beepTimer, concId);
+			g_fNadeTime[client][number] += tempish;
+		}
+	}
+	else {
+		if (g_bHolding[client][number]) {
+			ThrowNade(concId, false);
+			g_bHolding[client][number] = false;
+			NadeExplode(concId, true);
+		}
+		else {
+			NadeExplode(concId, false);
 		}
 	}
 	return Plugin_Handled;
@@ -790,74 +775,68 @@ Action delayTimer(Handle timer, any client) {
 void NadeExplode(int concId, bool handHeld = false) {
 	int nadeInfo[2];
 	nadeInfo = FindNade(concId);
-	if (nadeInfo[0] > -1 && nadeInfo[1] > -1) {
-		int
-			client = nadeInfo[0]
-			, number = nadeInfo[1];
-		
-		// PrintToChat(client, "Fin");
-		
-		float center[3];
-		g_iNadesUsed[client]--;
-	
-		GetEntPropVector(concId, Prop_Send, "m_vecOrigin", center);
-		if (g_iNadeType[client][number] == 0) {
-			float radius = cvConcRadius.FloatValue;
-			SetupConcBeams(center, radius);
-			EmitSoundToAll(SND_NADE_CONC, 0, SNDCHAN_WEAPON, SNDLEVEL_TRAFFIC, SND_NOFLAGS, SNDVOL_NORMAL, 100, _, center, NULL_VECTOR, false, 0.0);
-			if (cvConcIgnore.IntValue == 1) {
-				FindPlayersInRange(center, radius, 0, client, false, -1);
-			}
-			else {
-				FindPlayersInRange(center, radius, 0, client, true, g_iNadeID[client][number]);
-			}
-			int damage = 1;
-			for (int j = 1; j <= GetMaxClients(); j++) {
-				if (g_fPlayersInRange[j] > 0.0) {
-					if (j == client || cvConcNoOtherPush.IntValue == 0) {
-						ConcPlayer(j, center, radius, client, handHeld);
-						char tempString[32];
-						cvNadeIcon.GetString(tempString, sizeof(tempString));
-						DealDamage(j, damage, center, client, DMG_CRUSH, tempString);
-					}
-				}
-			}
-		}
-		g_fNadeTime[client][number] = -1.0;
-		g_iNadeType[client][number] = -1;
-		g_iNadeID[client][number] = -1;
-		if (g_hTimer[client][number] != null) {
-			delete g_hTimer[client][number];
-			g_hTimer[client][number] = null;
-		}
-		TeleportEntity(concId, g_fHoldingArea, NULL_VECTOR, NULL_VECTOR);
-		RemoveEdict(concId);
 
-		for (int i = 0; i <= 2; i++) {
-			g_fLastOri[client][number][0][i] = 0.0;
-			g_fLastOri[client][number][1][i] = 0.0;
-		}
-		g_iFrameTimer[client][number] = 0;
+	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+		return;
 	}
+
+	int client = nadeInfo[0];
+	int number = nadeInfo[1];
+	
+	// PrintToChat(client, "Fin");
+	
+	float center[3];
+	g_iNadesUsed[client]--;
+
+	GetEntPropVector(concId, Prop_Send, "m_vecOrigin", center);
+	if (g_iNadeType[client][number] == 0) {
+		float radius = cvConcRadius.FloatValue;
+		SetupConcBeams(center, radius);
+		EmitSoundToAll(SND_NADE_CONC, 0, SNDCHAN_WEAPON, SNDLEVEL_TRAFFIC, SND_NOFLAGS, SNDVOL_NORMAL, 100, _, center, NULL_VECTOR, false, 0.0);
+		if (cvConcIgnore.IntValue == 1) {
+			FindPlayersInRange(center, radius, 0, client, false, -1);
+		}
+		else {
+			FindPlayersInRange(center, radius, 0, client, true, g_iNadeID[client][number]);
+		}
+		int damage = 1;
+		for (int j = 1; j <= GetMaxClients(); j++) {
+			if (g_fPlayersInRange[j] > 0.0 && (j == client || cvConcNoOtherPush.IntValue == 0)) {
+				ConcPlayer(j, center, radius, client, handHeld);
+				char tempString[32];
+				cvNadeIcon.GetString(tempString, sizeof(tempString));
+				DealDamage(j, damage, center, client, DMG_CRUSH, tempString);
+			}
+		}
+	}
+	g_fNadeTime[client][number] = -1.0;
+	g_iNadeType[client][number] = -1;
+	g_iNadeID[client][number] = -1;
+
+	delete g_hTimer[client][number];
+
+	TeleportEntity(concId, g_fHoldingArea, NULL_VECTOR, NULL_VECTOR);
+	RemoveEdict(concId);
+
+	for (int i = 0; i <= 2; i++) {
+		g_fLastOri[client][number][0][i] = 0.0;
+		g_fLastOri[client][number][1][i] = 0.0;
+	}
+	g_iFrameTimer[client][number] = 0;
 }
 
 void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh) {
-	float
-		pSpd[3]
-		, cPush[3]
-		, pPos[3]
-		, distance
-		, pointDist
-		, calcSpd
-		, baseSpd;
+	float pSpd[3];
+	float cPush[3];
+	float pPos[3];
 
 	GetClientAbsOrigin(victim, pPos);
 	pPos[2] += cvConcBaseHeight.FloatValue;
 	GetEntPropVector(victim, Prop_Data, "m_vecVelocity", pSpd);
-	distance = GetVectorDistance(pPos, center);
+	float distance = GetVectorDistance(pPos, center);
 	SubtractVectors(pPos, center, cPush);
 	NormalizeVector(cPush, cPush);
-	pointDist = distance/radius;
+	float pointDist = distance/radius;
 	if (hh) { 
 		pointDist = pointDist*cvConcHHBoost.FloatValue + 0.25;
 		if (pointDist > 1.0) {
@@ -865,11 +844,11 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 		}
 	}
 
-	baseSpd = cvConcBaseSpeed.FloatValue;
+	float baseSpd = cvConcBaseSpeed.FloatValue;
 	if (cvBlastDistanceMin.FloatValue > pointDist) {
 		pointDist = cvBlastDistanceMin.FloatValue;
 	}
-	calcSpd = baseSpd*pointDist;
+	float calcSpd = baseSpd*pointDist;
 	// PrintToChat(victim, "Dist %f, calcSpd %f, pointDist %f", distance, calcSpd, pointDist);
 	if (cvConcTest.IntValue == 1) {
 		// pointdist 1 = 1450speed, 1.25 = 1959speed, 0.5 = 712.5, 0 = 475
@@ -898,9 +877,8 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 
 bool IsClassAllowed(char playerClass[16]) {
 	if (cvConcEnabled.IntValue == 1) {
-		char
-			sKeywords[64]
-			, sKeyword[16][32];
+		char sKeywords[64];
+		char sKeyword[16][32];
 
 		cvConcClass.GetString(sKeywords, 64);
 		int iKeywords = ExplodeString(sKeywords, ",", sKeyword, 16, 16);
@@ -914,11 +892,9 @@ bool IsClassAllowed(char playerClass[16]) {
 }
 
 void SetupConcBeams(float center[3], float radius) {
-	int
-		beamcolor[4] = { 255, ... };
-	float
-		beamcenter[3]
-		, height = (radius/2.0)/cvConcRings.FloatValue;
+	int beamcolor[4] = { 255, ... };
+	float beamcenter[3];
+	float height = (radius/2.0)/cvConcRings.FloatValue;
 
 	beamcenter = center;
 	for (int f = 0; f < cvConcRings.IntValue; f++) {
@@ -935,9 +911,8 @@ void ShowTrail(int nade, int color[4]) {
 
 void DealDamage(int victim, int damage, float loc[3], int attacker = 0, int dmg_type = DMG_GENERIC, char[] weapon = "") {
 	if (victim > 0 && IsValidEdict(victim) && IsClientInGame(victim) && IsPlayerAlive(victim) && damage > 0) {
-		char
-			dmg_str[16]
-			, dmg_type_str[32];
+		char dmg_str[16];
+		char dmg_type_str[32];
 
 		IntToString(damage, dmg_str, 16); 
 		IntToString(dmg_type, dmg_type_str, 32);
@@ -965,13 +940,10 @@ void DealDamage(int victim, int damage, float loc[3], int attacker = 0, int dmg_
 }
 
 void AddFolderToDownloadTable(const char[] Directory, bool recursive = false) {
-	char
-		FileName[64],
-		Path[512];
-	DirectoryListing
-		Dir = OpenDirectory(Directory);
-	FileType
-		Type;
+	char FileName[64];
+	char Path[512];
+	DirectoryListing Dir = OpenDirectory(Directory);
+	FileType Type;
 
 	while (Dir.GetNext(FileName, sizeof(FileName), Type)) {
 		if (Type == FileType_Directory && recursive) {           
@@ -988,42 +960,38 @@ void AddFolderToDownloadTable(const char[] Directory, bool recursive = false) {
 }
 
 void FindPlayersInRange(float location[3], float radius, int team, int self, bool trace, int donthit) {
-	Handle
-		tr;
-	float
-		rsquare = radius*radius
-		, orig[3]
-		, distance;
+	Handle tr;
+	float rsquare = radius*radius;
+	float orig[3];
+	float distance;
 
 	for (int i = 1; i <= MaxClients; i++) {
 		g_fPlayersInRange[i] = 0.0;
-		if (IsClientInGame(i)) {
-			if (IsPlayerAlive(i)) {
-				if ((team > 1 && GetClientTeam(i) == team) || team == 0 || i == self) {
-					GetClientAbsOrigin(i, orig);
-					for (int j = 0; j <= 2; j++) {
-						orig[j] -= location[j];
-						orig[j] *= orig[j];
-					}
-					distance = orig[0]+orig[1]+orig[2];
-					if (distance < rsquare) {
-						if (trace) {
-							GetClientEyePosition(i, orig);
-							tr = TR_TraceRayFilterEx(location, orig, MASK_SOLID, RayType_EndPoint, TraceRayHitPlayers, donthit);
-							if (tr != null) {
-								if (TR_GetFraction(tr) > 0.98) {
-									g_fPlayersInRange[i] = SquareRoot(distance)/radius;
-								}
-								delete tr;
-							}
-							
-						}
-						else {
-							g_fPlayersInRange[i] = SquareRoot(distance)/radius;
-						}
-					}
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || (!((team > 1 && (GetClientTeam(i) == team)) || team == 0 || i == self))) {
+			continue;
+		}
+
+		GetClientAbsOrigin(i, orig);
+		for (int j = 0; j <= 2; j++) {
+			orig[j] -= location[j];
+			orig[j] *= orig[j];
+		}
+		distance = orig[0]+orig[1]+orig[2];
+		if (distance >= rsquare) {
+			continue;
+		}
+		if (trace) {
+			GetClientEyePosition(i, orig);
+			tr = TR_TraceRayFilterEx(location, orig, MASK_SOLID, RayType_EndPoint, TraceRayHitPlayers, donthit);
+			if (tr != null) {
+				if (TR_GetFraction(tr) > 0.98) {
+					g_fPlayersInRange[i] = SquareRoot(distance)/radius;
 				}
+				delete tr;
 			}
+		}
+		else {
+			g_fPlayersInRange[i] = SquareRoot(distance)/radius;
 		}
 	}
 }
@@ -1084,23 +1052,14 @@ void Entity_GetAbsOrigin(int entity, float vec[3]) {
 
 void classFormat(int class) {
 	switch(class) {
-		case 1:
-			Format(g_classString, sizeof(g_classString), "scout");
-		case 2:
-			Format(g_classString, sizeof(g_classString), "sniper");
-		case 3:
-			Format(g_classString, sizeof(g_classString), "soldier");
-		case 4:
-			Format(g_classString, sizeof(g_classString), "demoman");
-		case 5:
-			Format(g_classString, sizeof(g_classString), "medic");
-		case 6:
-			Format(g_classString, sizeof(g_classString), "heavy");
-		case 7:
-			Format(g_classString, sizeof(g_classString), "pyro");
-		case 8:
-			Format(g_classString, sizeof(g_classString), "spy");
-		case 9:
-			Format(g_classString, sizeof(g_classString), "engineer");
+		case 1: Format(g_classString, sizeof(g_classString), "scout");
+		case 2: Format(g_classString, sizeof(g_classString), "sniper");
+		case 3: Format(g_classString, sizeof(g_classString), "soldier");
+		case 4: Format(g_classString, sizeof(g_classString), "demoman");
+		case 5: Format(g_classString, sizeof(g_classString), "medic");
+		case 6: Format(g_classString, sizeof(g_classString), "heavy");
+		case 7: Format(g_classString, sizeof(g_classString), "pyro");
+		case 8: Format(g_classString, sizeof(g_classString), "spy");
+		case 9: Format(g_classString, sizeof(g_classString), "engineer");
 	}
 }
