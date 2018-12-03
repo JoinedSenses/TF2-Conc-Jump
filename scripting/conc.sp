@@ -5,7 +5,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.3.1"
+#define PLUGIN_VERSION "1.3.2"
 #define DMG_TIMEBASED (DMG_PARALYZE | DMG_NERVEGAS | DMG_POISON | DMG_RADIATION | DMG_DROWNRECOVER | DMG_ACID | DMG_SLOWBURN)
 #define SND_NADE_CONC "weapons/explode5.wav"
 #define SND_THROWNADE "weapons/grenade_throw.wav"
@@ -86,7 +86,7 @@ public Plugin myinfo = {
 public void OnPluginStart() {
 	CreateConVar("sm_conc_version", PLUGIN_VERSION, "Conc Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	cvConcEnabled =			CreateConVar("sm_nade_enabled", "1", "Enables the plugin", 0);
-	cvNadeWaitPeriod =		CreateConVar("sm_nade_waitperiod", "0", "Reccomended if you have setuptime");
+	cvNadeWaitPeriod =		CreateConVar("sm_nade_waitperiod", "0", "Recommended if you have setuptime");
 	cvConcClass =			CreateConVar("sm_conc_class", "scout,medic", "Which classes are able to use the conc command", 0);
 	cvConcRadius =			CreateConVar("sm_conc_radius", "288.0", "Radius of conc blast", 0);
 	cvConcMax =				CreateConVar("sm_conc_max", "4", "How many concs a player can have spawned at the same time", 0);
@@ -183,9 +183,8 @@ public void OnMapStart() {
 			g_hTimer[i][j] = null;
 			g_fLastTime[i][j] = 0.0;
 			
-			for (int k = 0; k <= 2; k++) {
-				g_fLastOri[i][j][0][k] = g_fLastOri[i][j][1][k] = 0.0;
-			}
+			g_fLastOri[i][j][0] = NULL_VECTOR;
+			g_fLastOri[i][j][1] = NULL_VECTOR;
 			g_iFrameTimer[i][j] = 0;
 		}
 	}
@@ -207,13 +206,13 @@ public void OnClientDisconnect(int client) {
 }
 
 public Action EventRestartRound(Event event, const char[] name, bool dontBroadcast) {
-	g_bWaitOver = (cvConcEnabled.IntValue == 1 && cvNadeWaitPeriod.IntValue == 1);
+	g_bWaitOver = (cvConcEnabled.BoolValue && cvNadeWaitPeriod.BoolValue);
 }
 
 public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 
-	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
+	classFormat(TF2_GetPlayerClass(client));
 	if (IsClassAllowed(g_classString)) {
 		for (int i = 0; i < 10; i++) {
 			if (g_bHolding[client][i]) {
@@ -227,14 +226,14 @@ public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcas
 public Action EventPlayerChangeClass(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 
-	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
+	classFormat(TF2_GetPlayerClass(client));
 	if (!IsClassAllowed(g_classString)) {
 		resetClient(client);
 	}
 }
 
 public Action MainEvents(Event event, const char[] name, bool dontBroadcast) {
-	if (g_bWaitOver && g_iRealStart%2 == 1 && cvNadeWaitPeriod.IntValue == 1) {
+	if (g_bWaitOver && g_iRealStart%2 == 1 && cvNadeWaitPeriod.BoolValue) {
 		if (StrEqual(name, "teamplay_round_start")) {
 			g_bCanThrow = false;
 		}
@@ -243,10 +242,8 @@ public Action MainEvents(Event event, const char[] name, bool dontBroadcast) {
 			g_bCanThrow = true;
 		}
 	}
-	else if (cvNadeWaitPeriod.IntValue == 1) {
+	else if (cvNadeWaitPeriod.BoolValue) {
 		if (StrEqual(name, "teamplay_round_start")) {
-			// PrintToChatAll("teamplay_round_start && !g_bWaitOver");
-			// PrintToServer("teamplay_round_start && !g_bWaitOver");
 			g_bCanThrow = false;
 		}
 		else if (StrEqual(name, "teamplay_round_active")) {
@@ -260,8 +257,6 @@ public Action MainEvents(Event event, const char[] name, bool dontBroadcast) {
 }
 
 public Action RoundEnd(Event event, const char[] name, bool dontBroadcast) {
-	// PrintToChatAll("EventRoundEnd");
-	// PrintToServer("EventRoundEnd");
 	if (StrEqual(name, "teamplay_game_over")) {
 		g_bWaitOver = false;
 		g_iRealStart = 0;
@@ -299,7 +294,7 @@ public Action Command_Conc(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	classFormat(view_as<int>(TF2_GetPlayerClass(client)));
+	classFormat(TF2_GetPlayerClass(client));
 
 	if (!IsPlayerAlive(client) || IsFakeClient(client) || IsClientObserver(client) || g_bNadeDelay[client] || !IsClassAllowed(g_classString) || g_bButtonDown[client]) {
 		return Plugin_Handled;
@@ -335,21 +330,22 @@ public Action Command_Conc(int client, int args) {
 }
 
 public Action Command_UnConc(int client, int args) {
-	if (cvConcEnabled.IntValue == 1) {
-		g_bButtonDown[client] = false;
-		int tHold[2] = { 0, -1 };
-		for (int i = 0; i < 10; i++) {
-			if (g_bHolding[client][i]) {
-				tHold[0]++;
-				tHold[1] = i;
-			}
+	if (!cvConcEnabled.BoolValue) {
+		return Plugin_Handled;
+	}
+	g_bButtonDown[client] = false;
+	int tHold[2] = { 0, -1 };
+	for (int i = 0; i < 10; i++) {
+		if (g_bHolding[client][i]) {
+			tHold[0]++;
+			tHold[1] = i;
 		}
-		if (cvConcDebug.IntValue == 1) { 
-			PrintToServer("client %i, g_bHolding %i nades", client, tHold); 
-		}
-		if (tHold[0] == 1) {
-			ThrowNade(g_iNadeID[client][tHold[1]]);
-		}
+	}
+	if (cvConcDebug.BoolValue) { 
+		PrintToServer("client %i, g_bHolding %i nades", client, tHold); 
+	}
+	if (tHold[0] == 1) {
+		ThrowNade(g_iNadeID[client][tHold[1]]);
 	}
 	return Plugin_Handled;
 }
@@ -360,20 +356,21 @@ public Action Command_ConcHelp(int client, int args) {
 }
 
 public Action Command_ConcTimer(int client, int args) {
-	if (cvConcEnabled.IntValue == 1) {
-		if (args > 0) {
-			char arg[32];
-			GetCmdArg(1, arg, sizeof(arg));
-			float fArg = StringToFloat(arg);
-			if (fArg < 3.0) { 
-				ReplyToCommand(client, "Value must be 3.0 or higher"); 
-				return Plugin_Handled;
-			}
-			g_fPersonalTimer[client] = fArg;
+	if (!cvConcEnabled.BoolValue) {
+		return Plugin_Handled;
+	}
+	if (args > 0) {
+		char arg[32];
+		GetCmdArg(1, arg, sizeof(arg));
+		float fArg = StringToFloat(arg);
+		if (fArg < 3.0) { 
+			ReplyToCommand(client, "Value must be 3.0 or higher"); 
+			return Plugin_Handled;
 		}
-		else {
-			g_fPersonalTimer[client] = -1.0;
-		}
+		g_fPersonalTimer[client] = fArg;
+	}
+	else {
+		g_fPersonalTimer[client] = -1.0;
 	}
 	return Plugin_Handled;
 }
@@ -416,7 +413,7 @@ int MakeNade2(int client, int type = 0) {
 		
 		
 		g_iNadeID[client][number] = CreateEntityByName("prop_physics");
-		if (cvConcDebug.IntValue == 1) { 
+		if (cvConcDebug.BoolValue) { 
 			PrintToServer("Making Nade %i (%i) of type %i, for client %i", g_iNadeID[client][number], number, type, client); 
 		}
 		g_iNadeType[client][number] = type;
@@ -456,11 +453,10 @@ int MakeNade2(int client, int type = 0) {
 			
 			DispatchSpawn(g_iNadeID[client][number]);
 			
-			
 			// SetEntProp(iEnt, Prop_Data,"m_CollisionGroup", 5); 
 			// SetEntProp(iEnt, Prop_Data,"m_usSolidFlags", 28);
 			
-			if (cvConcDebug.IntValue == 1) { 
+			if (cvConcDebug.BoolValue) { 
 				PrintToServer("Nade %i (%i) made of type %i, for client %i", g_iNadeID[client][number], number, type, client); 
 			}
 			return number;
@@ -608,7 +604,7 @@ void ThrowNade(int id, bool thrown = true) {
 	int nadeInfo[2];
 	nadeInfo = FindNade(id);
 	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
-		if (cvConcDebug.IntValue == 1) { 
+		if (cvConcDebug.BoolValue) { 
 			PrintToServer("info not found for concId %i", id);
 		}
 		return;
@@ -642,7 +638,7 @@ void ThrowNade(int id, bool thrown = true) {
 			// speed[2]+= cvNadeThrowAngle.FloatValue;
 			
 			ScaleVector(speed, cvNadeThrowSpeed.FloatValue);
-			if (cvNadePhysics.IntValue > 0) {
+			if (cvNadePhysics.BoolValue) {
 				GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
 				if (cvNadePhysics.IntValue == 1) {
 					for (int i = 0; i < 2; i++) {
@@ -685,7 +681,7 @@ void ThrowNade(int id, bool thrown = true) {
 			SetEntityGravity(g_iNadeID[client][number], cvNadeDifGrav.FloatValue);
 		}
 		
-		if (cvNadeTrail.IntValue == 1) {
+		if (cvNadeTrail.BoolValue) {
 			int color[4];
 
 			switch (GetClientTeam(client)) {
@@ -725,12 +721,7 @@ Action beepTimer(Handle timer, any concId) {
 	// PrintToChat(client, "diffr = %.2f", diffr);
 	if (diffr > 0.01) {
 		// if g_bHolding make sound come from client pos, else from conc itself, unless sounds are off, then always only for client
-		if (cvNadeSoundMode.IntValue == 0) {
-			sEmitSound(client, client, (diffr <= 0.41));
-		}
-		else {
-			sEmitSound(-1, (g_bHolding[client][number]) ? client : concId, (diffr <= 0.41));
-		}
+		sEmitSound(-1, !cvNadeSoundMode.BoolValue ? client : g_bHolding[client][number] ? client : concId, (diffr <= 0.41));
 		
 		// make sure timer knows for when to set next beep
 		if (diffr > 1.41) {
@@ -793,15 +784,12 @@ void NadeExplode(int concId, bool handHeld = false) {
 		float radius = cvConcRadius.FloatValue;
 		SetupConcBeams(center, radius);
 		EmitSoundToAll(SND_NADE_CONC, 0, SNDCHAN_WEAPON, SNDLEVEL_TRAFFIC, SND_NOFLAGS, SNDVOL_NORMAL, 100, _, center, NULL_VECTOR, false, 0.0);
-		if (cvConcIgnore.IntValue == 1) {
-			FindPlayersInRange(center, radius, 0, client, false, -1);
-		}
-		else {
-			FindPlayersInRange(center, radius, 0, client, true, g_iNadeID[client][number]);
-		}
+
+		FindPlayersInRange(center, radius, 0, client, !cvConcIgnore.BoolValue, cvConcIgnore.BoolValue ? -1 : g_iNadeID[client][number]);
+
 		int damage = 1;
 		for (int j = 1; j <= GetMaxClients(); j++) {
-			if (g_fPlayersInRange[j] > 0.0 && (j == client || cvConcNoOtherPush.IntValue == 0)) {
+			if (g_fPlayersInRange[j] > 0.0 && (j == client || !cvConcNoOtherPush.BoolValue)) {
 				ConcPlayer(j, center, radius, client, handHeld);
 				char tempString[32];
 				cvNadeIcon.GetString(tempString, sizeof(tempString));
@@ -850,42 +838,44 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 	}
 	float calcSpd = baseSpd*pointDist;
 	// PrintToChat(victim, "Dist %f, calcSpd %f, pointDist %f", distance, calcSpd, pointDist);
-	if (cvConcTest.IntValue == 1) {
+	if (cvConcTest.BoolValue) {
 		// pointdist 1 = 1450speed, 1.25 = 1959speed, 0.5 = 712.5, 0 = 475
 		calcSpd = ((1.0/(baseSpd))*Pow(calcSpd, 2.0))+(baseSpd*0.5); 
-
 	}
 	else {
-		calcSpd = -1.0*Cosine((calcSpd / baseSpd) * 3.141592) * (baseSpd - (800.0 / 3.0)) + (baseSpd + (800.0 / 3.0));
+		calcSpd = -1.0*Cosine((calcSpd / baseSpd)*3.141592)*(baseSpd - (800.0 / 3.0))+(baseSpd + (800.0 / 3.0));
 	}
 	// PrintToChat(victim, "pointDist: %f, calcSpeed %i", pointDist, RoundFloat(calcSpd));
 	// PrintToChat(victim, "calcSpd after %f", calcSpd);
 
 	ScaleVector(cPush, calcSpd);
-	if (((hh && victim != attacker) || !hh) && (pSpd[2] < 0.0 && cPush[2] > 0.0 && cvConcBounce.IntValue == 1)) {
+	if (((hh && victim != attacker) || !hh) && (pSpd[2] < 0.0 && cPush[2] > 0.0 && cvConcBounce.BoolValue)) {
 		pSpd[2] = 0.0;
 	}
 
 	AddVectors(pSpd, cPush, pSpd);
 	
 	if (GetEntityFlags(victim) & FL_ONGROUND) {
-		if (pSpd[2] < 800.0/3.0) { pSpd[2] = 800.0/3.0;
-	} }
+		if (pSpd[2] < 800.0/3.0) {
+			pSpd[2] = 800.0/3.0;
+		}
+	}
 	// PrintToChat(victim, "Final: x %f, y %f, z %f", pSpd[0], pSpd[1], pSpd[2]);
 	TeleportEntity(victim, NULL_VECTOR, NULL_VECTOR, pSpd);
 }
 
 bool IsClassAllowed(char playerClass[16]) {
-	if (cvConcEnabled.IntValue == 1) {
-		char sKeywords[64];
-		char sKeyword[16][32];
+	if (!cvConcEnabled.BoolValue) {
+		return false;
+	}
+	char sKeywords[64];
+	char sKeyword[16][32];
 
-		cvConcClass.GetString(sKeywords, 64);
-		int iKeywords = ExplodeString(sKeywords, ",", sKeyword, 16, 16);
-		for (int i = 0; i < iKeywords; i++) {
-			if (StrContains(playerClass, sKeyword[i], false) > -1) {
-				return true;
-			}
+	cvConcClass.GetString(sKeywords, 64);
+	int iKeywords = ExplodeString(sKeywords, ",", sKeyword, 16, 16);
+	for (int i = 0; i < iKeywords; i++) {
+		if (StrContains(playerClass, sKeyword[i], false) > -1) {
+			return true;
 		}
 	}
 	return false;
@@ -931,7 +921,7 @@ void DealDamage(int victim, int damage, float loc[3], int attacker = 0, int dmg_
 			}
 			DispatchSpawn(pointHurt);
 			
-			AcceptEntityInput(pointHurt,"Hurt",(attacker > 0)?attacker:-1);
+			AcceptEntityInput(pointHurt,"Hurt", (attacker > 0) ? attacker : -1);
 			DispatchKeyValue(pointHurt,"classname","point_hurt");
 			DispatchKeyValue(victim,"targetname","donthurtme");
 			RemoveEdict(pointHurt);
@@ -1000,33 +990,6 @@ public bool TraceRayHitPlayers(int entity, int mask, any startent) {
 	return (entity != startent && entity <= GetMaxClients() && entity > 0); 
 }
 
-public Action DeleteParticles(Handle timer, any particle) {
-	if (IsValidEntity(particle)) {
-		char classname[128];
-		GetEdictClassname(particle, classname, sizeof(classname));
-		if (StrEqual(classname, "info_particle_system", false)) {
-			RemoveEdict(particle);
-		}
-		else {
-			LogError("DeleteParticles: not removing entity - not a particle '%s'", classname);
-		}
-	}
-}
-
-public void ShowParticle(float pos[3], char[] particlename, float time) {
-	int particle = CreateEntityByName("info_particle_system");
-	if (IsValidEdict(particle)) {
-		TeleportEntity(particle, pos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(particle, "effect_name", particlename);
-		ActivateEntity(particle);
-		AcceptEntityInput(particle, "start");
-		CreateTimer(time, DeleteParticles, particle);
-	}
-	else {
-		LogError("ShowParticle: could not create info_particle_system");
-	}	
-}
-
 void resetClient(int client) {
 	for (int i = 0; i < 10; i++) {
 		if (g_iNadeID[client][i] != -1) {
@@ -1050,16 +1013,16 @@ void Entity_GetAbsOrigin(int entity, float vec[3]) {
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", vec);
 }
 
-void classFormat(int class) {
+void classFormat(TFClassType class) {
 	switch(class) {
-		case 1: Format(g_classString, sizeof(g_classString), "scout");
-		case 2: Format(g_classString, sizeof(g_classString), "sniper");
-		case 3: Format(g_classString, sizeof(g_classString), "soldier");
-		case 4: Format(g_classString, sizeof(g_classString), "demoman");
-		case 5: Format(g_classString, sizeof(g_classString), "medic");
-		case 6: Format(g_classString, sizeof(g_classString), "heavy");
-		case 7: Format(g_classString, sizeof(g_classString), "pyro");
-		case 8: Format(g_classString, sizeof(g_classString), "spy");
-		case 9: Format(g_classString, sizeof(g_classString), "engineer");
+		case TFClass_Scout: Format(g_classString, sizeof(g_classString), "scout");
+		case TFClass_Sniper: Format(g_classString, sizeof(g_classString), "sniper");
+		case TFClass_Soldier: Format(g_classString, sizeof(g_classString), "soldier");
+		case TFClass_DemoMan: Format(g_classString, sizeof(g_classString), "demoman");
+		case TFClass_Medic: Format(g_classString, sizeof(g_classString), "medic");
+		case TFClass_Heavy: Format(g_classString, sizeof(g_classString), "heavy");
+		case TFClass_Pyro: Format(g_classString, sizeof(g_classString), "pyro");
+		case TFClass_Spy: Format(g_classString, sizeof(g_classString), "spy");
+		case TFClass_Engineer: Format(g_classString, sizeof(g_classString), "engineer");
 	}
 }
