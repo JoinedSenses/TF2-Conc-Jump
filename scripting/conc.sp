@@ -5,7 +5,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.3.2"
+#define PLUGIN_VERSION "1.3.3"
 #define DMG_TIMEBASED (DMG_PARALYZE | DMG_NERVEGAS | DMG_POISON | DMG_RADIATION | DMG_DROWNRECOVER | DMG_ACID | DMG_SLOWBURN)
 #define SND_NADE_CONC "weapons/explode5.wav"
 #define SND_THROWNADE "weapons/grenade_throw.wav"
@@ -84,7 +84,7 @@ public Plugin myinfo = {
 }
 
 public void OnPluginStart() {
-	CreateConVar("sm_conc_version", PLUGIN_VERSION, "Conc Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	CreateConVar("sm_conc_version", PLUGIN_VERSION, "Conc Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY).SetString(PLUGIN_VERSION);
 	cvConcEnabled =			CreateConVar("sm_nade_enabled", "1", "Enables the plugin", 0);
 	cvNadeWaitPeriod =		CreateConVar("sm_nade_waitperiod", "0", "Recommended if you have setuptime");
 	cvConcClass =			CreateConVar("sm_conc_class", "scout,medic", "Which classes are able to use the conc command", 0);
@@ -783,7 +783,7 @@ void NadeExplode(int concId, bool handHeld = false) {
 	if (g_iNadeType[client][number] == 0) {
 		float radius = cvConcRadius.FloatValue;
 		SetupConcBeams(center, radius);
-		EmitSoundToAll(SND_NADE_CONC, 0, SNDCHAN_WEAPON, SNDLEVEL_TRAFFIC, SND_NOFLAGS, SNDVOL_NORMAL, 100, _, center, NULL_VECTOR, false, 0.0);
+		EmitSoundToAll(SND_NADE_CONC, concId, SNDCHAN_WEAPON, SNDLEVEL_TRAFFIC, SND_NOFLAGS, SNDVOL_NORMAL, 100, _, center, NULL_VECTOR, false, 0.0);
 
 		FindPlayersInRange(center, radius, 0, client, !cvConcIgnore.BoolValue, cvConcIgnore.BoolValue ? -1 : g_iNadeID[client][number]);
 
