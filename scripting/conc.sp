@@ -6,7 +6,7 @@
 #include <sdkhooks>
 
 #define PLUGIN_VERSION "1.3.3"
-#define DMG_TIMEBASED (DMG_PARALYZE | DMG_NERVEGAS | DMG_POISON | DMG_RADIATION | DMG_DROWNRECOVER | DMG_ACID | DMG_SLOWBURN)
+#define DMG_TIMEBASED (DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN)
 #define SND_NADE_CONC "weapons/explode5.wav"
 #define SND_THROWNADE "weapons/grenade_throw.wav"
 #define SND_NADE_CONC_TIMER "weapons/det_pack_timer.wav"
@@ -14,7 +14,6 @@
 #define SND_NADE_CONC_HIGHPITCH "weapons/det_pack_timer62.wav"
 
 // 950.0, 0.4, 2.25
-
 ConVar
 	  cvConcEnabled
 	, cvConcClass
@@ -65,7 +64,7 @@ bool
 float
 	  g_fNadeTime[MAXPLAYERS+1][10]
 	, g_fPlayersInRange[MAXPLAYERS+1]
-	, g_fHoldingArea[3] = { -10000.0, ... }
+	, g_fHoldingArea[3] = {-10000.0, ...}
 	, g_fPersonalTimer[MAXPLAYERS+1]
 	, g_fLastTime[MAXPLAYERS+1][10]
 	, g_fLastTime2[MAXPLAYERS+1][10]
@@ -294,9 +293,13 @@ public Action Command_Conc(int client, int args) {
 		return Plugin_Handled;
 	}
 
+	if (!IsClientInGame(client) || !IsPlayerAlive(client) || IsClientObserver(client) || IsFakeClient(client)) {
+		return Plugin_Handled;
+	}
+
 	classFormat(TF2_GetPlayerClass(client));
 
-	if (!IsPlayerAlive(client) || IsFakeClient(client) || IsClientObserver(client) || g_bNadeDelay[client] || !IsClassAllowed(g_classString) || g_bButtonDown[client]) {
+	if (g_bNadeDelay[client] || !IsClassAllowed(g_classString) || g_bButtonDown[client]) {
 		return Plugin_Handled;
 	}
 
@@ -363,7 +366,7 @@ public Action Command_ConcTimer(int client, int args) {
 		char arg[32];
 		GetCmdArg(1, arg, sizeof(arg));
 		float fArg = StringToFloat(arg);
-		if (fArg < 3.0) { 
+		if (fArg < 3.0) {
 			ReplyToCommand(client, "Value must be 3.0 or higher"); 
 			return Plugin_Handled;
 		}
@@ -410,7 +413,6 @@ int MakeNade2(int client, int type = 0) {
 		if (type == 0) {
 			strcopy(model, sizeof(model), MDL_CONC);
 		}
-		
 		
 		g_iNadeID[client][number] = CreateEntityByName("prop_physics");
 		if (cvConcDebug.BoolValue) { 
@@ -478,7 +480,7 @@ public Action fOnTakeDamage(int victim, int &attacker, int &inflictor, float &da
 	int nadeInfo[2];
 	nadeInfo = FindNade(victim);
 
-	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
+	if (nadeInfo[0] < 0 || nadeInfo[1] < 0) {
 		return Plugin_Handled;
 	}
 
@@ -987,7 +989,7 @@ void FindPlayersInRange(float location[3], float radius, int team, int self, boo
 }
 
 public bool TraceRayHitPlayers(int entity, int mask, any startent) {
-	return (entity != startent && entity <= GetMaxClients() && entity > 0); 
+	return (entity != startent && entity <= MaxClients && entity > 0); 
 }
 
 void resetClient(int client) {
