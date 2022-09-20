@@ -5,7 +5,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.3.3"
+#define PLUGIN_VERSION "1.3.4"
 #define DMG_TIMEBASED (DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN)
 #define SND_NADE_CONC "weapons/explode5.wav"
 #define SND_THROWNADE "weapons/grenade_throw.wav"
@@ -15,64 +15,64 @@
 
 // 950.0, 0.4, 2.25
 ConVar
-	  cvConcEnabled
-	, cvConcClass
-	, cvConcRadius
-	, cvConcMax
-	, cvNadeDelay
-	, cvNadeTimer
-	, cvNadePhysics
-	, cvNadeDifGrav
-	, cvNadeTrail
-	, cvNadeSoundMode
-	, cvNadeThrowSpeed
-	, cvNadeThrowAngle
-	, cvConcIgnore
-	, cvConcNoOtherPush
-	, cvConcRings
-	, cvConcBaseHeight
-	, cvConcBaseSpeed
-	, cvNadeIcon
-	, cvNadeHHHeight
-	, cvNadeHHDisDecrease
-	, cvBlastDistanceMin
-	, cvConcBounce
-	, cvConcHHBoost
-	, cvNadeAngleCorrection
-	, cvNadeWaitPeriod
-	, cvConcTest
-	, cvConcBounceDelay
-	, cvFrameTimer
-	, cvNadeGroundRes
-	, cvNadeStartHeight
-	, cvConcDebug;
+	cvConcEnabled,
+	cvConcClass,
+	cvConcRadius,
+	cvConcMax,
+	cvNadeDelay,
+	cvNadeTimer,
+	cvNadePhysics,
+	cvNadeDifGrav,
+	cvNadeTrail,
+	cvNadeSoundMode,
+	cvNadeThrowSpeed,
+	cvNadeThrowAngle,
+	cvConcIgnore,
+	cvConcNoOtherPush,
+	cvConcRings,
+	cvConcBaseHeight,
+	cvConcBaseSpeed,
+	cvNadeIcon,
+	cvNadeHHHeight,
+	cvNadeHHDisDecrease,
+	cvBlastDistanceMin,
+	cvConcBounce,
+	cvConcHHBoost,
+	cvNadeAngleCorrection,
+	cvNadeWaitPeriod,
+	cvConcTest,
+	cvConcBounceDelay,
+	cvFrameTimer,
+	cvNadeGroundRes,
+	cvNadeStartHeight,
+	cvConcDebug;
 int
-	  g_iRingMOdel
-	, g_iNadesUsed[MAXPLAYERS+1]
-	, g_iConcToUse[MAXPLAYERS+1]
-	, g_iNadeID[MAXPLAYERS+1][10]
-	, g_iRealStart
-	, g_iNadeType[MAXPLAYERS+1][10]
-	, g_iFrameTimer[MAXPLAYERS+1][10];
+	g_iRingMOdel,
+	g_iNadesUsed[MAXPLAYERS+1],
+	g_iConcToUse[MAXPLAYERS+1],
+	g_iNadeID[MAXPLAYERS+1][10],
+	g_iRealStart,
+	g_iNadeType[MAXPLAYERS+1][10],
+	g_iFrameTimer[MAXPLAYERS+1][10];
 bool
-	  g_bHolding[MAXPLAYERS+1][10]
-	, g_bNadeDelay[MAXPLAYERS+1]
-	, g_bButtonDown[MAXPLAYERS+1]
-	, g_bCanThrow
-	, g_bWaitOver
-	, g_bLateLoad;
+	g_bHolding[MAXPLAYERS+1][10],
+	g_bNadeDelay[MAXPLAYERS+1],
+	g_bButtonDown[MAXPLAYERS+1],
+	g_bCanThrow,
+	g_bWaitOver,
+	g_bLateLoad;
 float
-	  g_fNadeTime[MAXPLAYERS+1][10]
-	, g_fPlayersInRange[MAXPLAYERS+1]
-	, g_fHoldingArea[3] = {-10000.0, ...}
-	, g_fPersonalTimer[MAXPLAYERS+1]
-	, g_fLastTime[MAXPLAYERS+1][10]
-	, g_fLastTime2[MAXPLAYERS+1][10]
-	, g_fLastOri[MAXPLAYERS+1][10][2][3];
+	g_fNadeTime[MAXPLAYERS+1][10],
+	g_fPlayersInRange[MAXPLAYERS+1],
+	g_fHoldingArea[3] = {-10000.0, ...},
+	g_fPersonalTimer[MAXPLAYERS+1],
+	g_fLastTime[MAXPLAYERS+1][10],
+	g_fLastTime2[MAXPLAYERS+1][10],
+	g_fLastOri[MAXPLAYERS+1][10][2][3];
 char
-	  g_classString[16];
+	g_classString[16];
 Handle
-	  g_hTimer[MAXPLAYERS+1][10];
+	g_hTimer[MAXPLAYERS+1][10];
 
 public Plugin myinfo = {
 	name = "Concussion Grenade",
@@ -84,37 +84,37 @@ public Plugin myinfo = {
 
 public void OnPluginStart() {
 	CreateConVar("sm_conc_version", PLUGIN_VERSION, "Conc Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY).SetString(PLUGIN_VERSION);
-	cvConcEnabled =			CreateConVar("sm_nade_enabled", "1", "Enables the plugin", 0);
-	cvNadeWaitPeriod =		CreateConVar("sm_nade_waitperiod", "0", "Recommended if you have setuptime");
-	cvConcClass =			CreateConVar("sm_conc_class", "scout,medic", "Which classes are able to use the conc command", 0);
-	cvConcRadius =			CreateConVar("sm_conc_radius", "288.0", "Radius of conc blast", 0);
-	cvConcMax =				CreateConVar("sm_conc_max", "4", "How many concs a player can have spawned at the same time", 0);
-	cvNadeDelay =			CreateConVar("sm_nade_delay", "0.55", "How long a player has to wait before throwing another conc", 0);
-	cvNadeTimer =			CreateConVar("sm_nade_timer", "3.0", "How many second to wait until conc explodes", 0);
-	cvNadePhysics =			CreateConVar("sm_nade_physics", "0", "Throwing physics, 0 = sm_conc_throwspeed, 1 = sm_conc_throwspeed+ownspeed, 2 = mix", 0);
-	cvNadeDifGrav =			CreateConVar("sm_nade_difgrav", "1.75", "Since prop_physics don't use the same physics as a player, this is needed to give it the same terminal velocity", 0);
-	cvNadeTrail =			CreateConVar("sm_nade_trail", "1", "Enables a trail following the conc", 0);
-	cvNadeSoundMode =		CreateConVar("sm_nade_sounds", "1", "0 = sounds only for client throwing them, 1 = sounds audible for everyone", 0);
-	cvNadeThrowSpeed =		CreateConVar("sm_nade_throwspeed", "625.0", "Speed at which concs are thrown", 0);
-	cvNadeThrowAngle =		CreateConVar("sm_nade_throwangle", "20.0", "Positive aims higher then crosshair, negative lower", 0);
-	cvConcIgnore =			CreateConVar("sm_conc_ignorewalls", "1", "Enables the conc's explosion to push people through walls", 0);
-	cvConcNoOtherPush =		CreateConVar("sm_conc_ignoreothers", "1", "Enables the conc's to only push the person that threw it", 0);
-	cvConcRings =			CreateConVar("sm_conc_rings", "10.0", "Sets how many rings the conc explosion has", 0);
-	cvConcBaseHeight =		CreateConVar("sm_nade_baseheight", "48.0", "Correction for how high the player is when exploding, for making sure it pushes ppl off ground", 0);
-	cvConcBaseSpeed =		CreateConVar("sm_conc_basespeed", "950.0", "Base value for conc speed calculations", 0);
-	cvNadeIcon =			CreateConVar("sm_nade_killicon", "tf_projectile_rocket", "kill icon for concs", 0);
-	cvNadeHHHeight =		CreateConVar("sm_nade_hhheight", "24.0", "How high a nade should be spawned relative to feet on a handheld(feet = 0.0)", 0);
-	cvNadeHHDisDecrease =	CreateConVar("sm_nade_hhdisdec", "0.175", "This value*playerspeed = distance from you and nade on a handheld", 0);
-	cvConcBounce =			CreateConVar("sm_conc_bounce", "1", "Insures a conc has the power to push someone back up, no matter how fast he's falling", 0);
-	cvConcHHBoost =			CreateConVar("sm_conc_hhboost", "3.0", "Correction for hh speed");
-	cvNadeAngleCorrection =	CreateConVar("sm_conc_anglecorr", "90.0", "Correction for angle which conc rolls to");
-	cvBlastDistanceMin =	CreateConVar("sm_conc_blastdistmin", "0.25", "...");
-	cvConcBounceDelay =		CreateConVar("sm_conc_bounce_delay", "0.0608", "...");
-	cvFrameTimer =			CreateConVar("sm_frametimer", "1", "...");
-	cvConcTest =			CreateConVar("sm_conc_testblast", "1", "...");
-	cvNadeGroundRes =		CreateConVar("sm_nade_groundres", "0.6", "...");
-	cvNadeStartHeight =		CreateConVar("sm_nade_startheight", "-24.0", "...");
-	cvConcDebug =			CreateConVar("sm_conc_debug", "0", "...");
+	cvConcEnabled =         CreateConVar("sm_nade_enabled", "1", "Enables the plugin", 0);
+	cvNadeWaitPeriod =      CreateConVar("sm_nade_waitperiod", "0", "Recommended if you have setuptime");
+	cvConcClass =           CreateConVar("sm_conc_class", "scout,medic", "Which classes are able to use the conc command", 0);
+	cvConcRadius =          CreateConVar("sm_conc_radius", "288.0", "Radius of conc blast", 0);
+	cvConcMax =             CreateConVar("sm_conc_max", "4", "How many concs a player can have spawned at the same time", 0);
+	cvNadeDelay =           CreateConVar("sm_nade_delay", "0.55", "How long a player has to wait before throwing another conc", 0);
+	cvNadeTimer =           CreateConVar("sm_nade_timer", "3.0", "How many second to wait until conc explodes", 0);
+	cvNadePhysics =         CreateConVar("sm_nade_physics", "0", "Throwing physics, 0 = sm_conc_throwspeed, 1 = sm_conc_throwspeed+ownspeed, 2 = mix", 0);
+	cvNadeDifGrav =         CreateConVar("sm_nade_difgrav", "1.75", "Since prop_physics don't use the same physics as a player, this is needed to give it the same terminal velocity", 0);
+	cvNadeTrail =           CreateConVar("sm_nade_trail", "1", "Enables a trail following the conc", 0);
+	cvNadeSoundMode =       CreateConVar("sm_nade_sounds", "1", "0 = sounds only for client throwing them, 1 = sounds audible for everyone", 0);
+	cvNadeThrowSpeed =      CreateConVar("sm_nade_throwspeed", "625.0", "Speed at which concs are thrown", 0);
+	cvNadeThrowAngle =      CreateConVar("sm_nade_throwangle", "20.0", "Positive aims higher then crosshair, negative lower", 0);
+	cvConcIgnore =          CreateConVar("sm_conc_ignorewalls", "1", "Enables the conc's explosion to push people through walls", 0);
+	cvConcNoOtherPush =     CreateConVar("sm_conc_ignoreothers", "1", "Enables the conc's to only push the person that threw it", 0);
+	cvConcRings =           CreateConVar("sm_conc_rings", "10.0", "Sets how many rings the conc explosion has", 0);
+	cvConcBaseHeight =      CreateConVar("sm_nade_baseheight", "48.0", "Correction for how high the player is when exploding, for making sure it pushes ppl off ground", 0);
+	cvConcBaseSpeed =       CreateConVar("sm_conc_basespeed", "950.0", "Base value for conc speed calculations", 0);
+	cvNadeIcon =            CreateConVar("sm_nade_killicon", "tf_projectile_rocket", "kill icon for concs", 0);
+	cvNadeHHHeight =        CreateConVar("sm_nade_hhheight", "24.0", "How high a nade should be spawned relative to feet on a handheld(feet = 0.0)", 0);
+	cvNadeHHDisDecrease =   CreateConVar("sm_nade_hhdisdec", "0.175", "This value*playerspeed = distance from you and nade on a handheld", 0);
+	cvConcBounce =          CreateConVar("sm_conc_bounce", "1", "Insures a conc has the power to push someone back up, no matter how fast he's falling", 0);
+	cvConcHHBoost =         CreateConVar("sm_conc_hhboost", "3.0", "Correction for hh speed");
+	cvNadeAngleCorrection = CreateConVar("sm_conc_anglecorr", "90.0", "Correction for angle which conc rolls to");
+	cvBlastDistanceMin =    CreateConVar("sm_conc_blastdistmin", "0.25", "...");
+	cvConcBounceDelay =     CreateConVar("sm_conc_bounce_delay", "0.0608", "...");
+	cvFrameTimer =          CreateConVar("sm_frametimer", "1", "...");
+	cvConcTest =            CreateConVar("sm_conc_testblast", "1", "...");
+	cvNadeGroundRes =       CreateConVar("sm_nade_groundres", "0.6", "...");
+	cvNadeStartHeight =     CreateConVar("sm_nade_startheight", "-24.0", "...");
+	cvConcDebug =           CreateConVar("sm_conc_debug", "0", "...");
 
 	RegConsoleCmd("+conc", Command_Conc);
 	RegConsoleCmd("-conc", Command_UnConc);
@@ -129,9 +129,11 @@ public void OnPluginStart() {
 	HookEvent("teamplay_round_win", RoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("teamplay_game_over", RoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_changeclass", EventPlayerChangeClass);
+
 	if (g_bLateLoad) {
 		g_bCanThrow = g_bWaitOver = true;
 	}
+
 	for (int i = 1; i <= MaxClients; i++) {
 		g_fPersonalTimer[i] = -1.0;
 		for (int j = 0; j < 10; j++) {
@@ -143,6 +145,7 @@ public void OnPluginStart() {
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
 	g_bLateLoad = late;
+
 	return APLRes_Success;
 }
 
@@ -170,6 +173,10 @@ public void OnMapStart() {
 	if (!g_bLateLoad) {
 		g_bCanThrow = g_bWaitOver = false;
 	}
+	else {
+		g_bLateLoad = false;
+	}
+
 	for (int i = 1; i <= MaxClients; i++) {
 		g_iNadesUsed[i] = 0;
 		g_iConcToUse[i] = -1;
@@ -191,6 +198,7 @@ public void OnMapStart() {
 
 public void OnMapEnd() {
 	g_bCanThrow = g_bWaitOver = false;
+
 	for (int i = 1; i <= MaxClients; i++) {
 		resetClient(i);
 	}
@@ -231,7 +239,7 @@ public Action EventPlayerChangeClass(Event event, const char[] name, bool dontBr
 	}
 }
 
-public Action MainEvents(Event event, const char[] name, bool dontBroadcast) {
+public void MainEvents(Event event, const char[] name, bool dontBroadcast) {
 	if (g_bWaitOver && g_iRealStart%2 == 1 && cvNadeWaitPeriod.BoolValue) {
 		if (StrEqual(name, "teamplay_round_start")) {
 			g_bCanThrow = false;
@@ -321,6 +329,7 @@ public Action Command_Conc(int client, int args) {
 	CreateTimer(1.0, beepTimer, g_iNadeID[client][tNade]);
 	// g_fLastTime2[client][number] = GetGameTime();
 	CreateTimer(cvNadeDelay.FloatValue, delayTimer, client);
+
 	if (cvNadeSoundMode.BoolValue) {
 		EmitSoundToAll(SND_NADE_CONC_TIMER, client);
 	}
@@ -336,7 +345,9 @@ public Action Command_UnConc(int client, int args) {
 	if (!cvConcEnabled.BoolValue) {
 		return Plugin_Handled;
 	}
+
 	g_bButtonDown[client] = false;
+
 	int tHold[2] = { 0, -1 };
 	for (int i = 0; i < 10; i++) {
 		if (g_bHolding[client][i]) {
@@ -344,12 +355,15 @@ public Action Command_UnConc(int client, int args) {
 			tHold[1] = i;
 		}
 	}
+
 	if (cvConcDebug.BoolValue) { 
 		PrintToServer("client %i, g_bHolding %i nades", client, tHold); 
 	}
+
 	if (tHold[0] == 1) {
 		ThrowNade(g_iNadeID[client][tHold[1]]);
 	}
+
 	return Plugin_Handled;
 }
 
@@ -362,14 +376,17 @@ public Action Command_ConcTimer(int client, int args) {
 	if (!cvConcEnabled.BoolValue) {
 		return Plugin_Handled;
 	}
+
 	if (args > 0) {
 		char arg[32];
 		GetCmdArg(1, arg, sizeof(arg));
 		float fArg = StringToFloat(arg);
+
 		if (fArg < 3.0) {
 			ReplyToCommand(client, "Value must be 3.0 or higher"); 
 			return Plugin_Handled;
 		}
+
 		g_fPersonalTimer[client] = fArg;
 	}
 	else {
@@ -384,6 +401,7 @@ int GetFreeNadeSlot(int client) {
 			return i;
 		}
 	}
+
 	return -1;
 }
 
@@ -392,11 +410,13 @@ int FindNade(int id) {
 	if (id <= 0) {
 		return value;
 	}
+
 	for (int i = 1; i <= MaxClients; i++) {
 		for (int j = 0; j < 10; j++) {
 			if (g_iNadeID[i][j] == id) {
 				value[0] = i;
 				value[1] = j;
+
 				return value;
 			}
 		}
@@ -413,57 +433,62 @@ int MakeNade2(int client, int type = 0) {
 		if (type == 0) {
 			strcopy(model, sizeof(model), MDL_CONC);
 		}
-		
-		g_iNadeID[client][number] = CreateEntityByName("prop_physics");
+
+		int nade = CreateEntityByName("prop_physics");
+		g_iNadeID[client][number] = nade;
+
 		if (cvConcDebug.BoolValue) { 
-			PrintToServer("Making Nade %i (%i) of type %i, for client %i", g_iNadeID[client][number], number, type, client); 
+			PrintToServer("Making Nade %i (%i) of type %i, for client %i", nade, number, type, client); 
 		}
-		g_iNadeType[client][number] = type;
-		
-		if (IsValidEntity(g_iNadeID[client][number])) {
-			SetEntPropEnt(g_iNadeID[client][number], Prop_Data, "m_hOwnerEntity", client);
-			SetEntityModel(g_iNadeID[client][number], model);
+
+		if (IsValidEntity(nade)) {
+			g_iNadeType[client][number] = type;
+
+			SetEntPropEnt(nade, Prop_Data, "m_hOwnerEntity", client);
+			SetEntityModel(nade, model);
 			Format(skin, sizeof(skin), "%d", GetClientTeam(client)-2);
-			DispatchKeyValue(g_iNadeID[client][number], "skin", skin);
-			
+			DispatchKeyValue(nade, "skin", skin);
+
 			// DispatchKeyValue(iEnt,"model", szModel);
-			DispatchKeyValue(g_iNadeID[client][number],"Solid","6");
-			DispatchKeyValue(g_iNadeID[client][number],"physdamagescale","10000.0");
-			DispatchKeyValue(g_iNadeID[client][number],"minhealthdmg","0");
+			DispatchKeyValue(nade,"Solid","6");
+			DispatchKeyValue(nade,"physdamagescale","10000.0");
+			DispatchKeyValue(nade,"minhealthdmg","0");
 			// DispatchKeyValue(g_iNadeID[client][number],"sethealth","500000");
 			
 			// FSOLID_NOT_SOLID|FSOLID_TRIGGER
-			SetEntProp(g_iNadeID[client][number], Prop_Send, "m_usSolidFlags", 12);
+			SetEntProp(nade, Prop_Send, "m_usSolidFlags", 12);
 			// SOLID_VPHYSICS
 			// SetEntProp(g_iNadeID[client][number], Prop_Data, "m_nSolidType", 6);
 
 			// COLLISION_GROUP_DEBRIS 
-			SetEntProp(g_iNadeID[client][number], Prop_Send, "m_CollisionGroup", 1); 
-			
-			SetEntityMoveType(g_iNadeID[client][number], MOVETYPE_NOCLIP);
-			
+			SetEntProp(nade, Prop_Send, "m_CollisionGroup", 1); 
+
+			SetEntityMoveType(nade, MOVETYPE_NOCLIP);
+
 			// test to fix bug where entity nr = -1
 			char tName[32];
 			Format(tName, sizeof(tName), "tf2nade%d", client);
-			DispatchKeyValue(g_iNadeID[client][number], "targetname", tName);
-			AcceptEntityInput(g_iNadeID[client][number], "DisableDamageForces");
-			
-			SDKHook(g_iNadeID[client][number], SDKHook_OnTakeDamage, fOnTakeDamage);
+			DispatchKeyValue(nade, "targetname", tName);
+			AcceptEntityInput(nade, "DisableDamageForces");
+
+			SDKHook(nade, SDKHook_OnTakeDamage, fOnTakeDamage);
 			// SDKHook(g_iNadeID[client][number], SDKHook_Think, OnThink);
-			SDKHook(g_iNadeID[client][number], SDKHook_VPhysicsUpdate, PhysUp);
+			SDKHook(nade, SDKHook_VPhysicsUpdate, PhysUp);
 			// Entity_SetMaxSpeed(g_iNadeID[client][number], 3500.0);
-			
-			DispatchSpawn(g_iNadeID[client][number]);
-			
+
+			DispatchSpawn(nade);
+
 			// SetEntProp(iEnt, Prop_Data,"m_CollisionGroup", 5); 
 			// SetEntProp(iEnt, Prop_Data,"m_usSolidFlags", 28);
 			
 			if (cvConcDebug.BoolValue) { 
-				PrintToServer("Nade %i (%i) made of type %i, for client %i", g_iNadeID[client][number], number, type, client); 
+				PrintToServer("Nade %i (%i) made of type %i, for client %i", nade, number, type, client); 
 			}
+
 			return number;
 		}
 	}
+
 	return -1;
 }
 
@@ -472,7 +497,7 @@ public Action fOnTakeDamage(int victim, int &attacker, int &inflictor, float &da
 	if (damagetype != DMG_CRUSH) {
 		return Plugin_Handled;
 	}
-    
+
 	static char szAttacker[3];
 	IntToString(attacker, szAttacker, sizeof(szAttacker));
 	
@@ -497,9 +522,9 @@ public Action fOnTakeDamage(int victim, int &attacker, int &inflictor, float &da
 	if (now - g_fLastTime[client][number] > delay) {
 		BounceConc2(victim, damagePosition);
 	}
+
 	g_fLastTime[client][number] = now;
-	
-	
+
 	return Plugin_Handled;
 }
 
@@ -511,6 +536,7 @@ void PhysUp(int ent) {
 		PrintToChatAll("INVALID SHIZZLE");
 		return;
 	}
+
 	int i = nadeInfo[0];
 	int j = nadeInfo[1];
 	
@@ -526,6 +552,7 @@ void PhysUp(int ent) {
 		
 		g_iFrameTimer[i][j] = 0;
 	}
+
 	g_iFrameTimer[i][j]++;
 }
 
@@ -545,6 +572,7 @@ int BounceConc2(int entity, float damagePos[3]) {
 		
 	if (!TR_DidHit(trace)) {
 		delete trace;
+
 		return -1;
 	}
 
@@ -579,7 +607,7 @@ int BounceConc2(int entity, float damagePos[3]) {
 			ScaleVector(vNormal, 2.0);
 			AddVectors(vVec, vNormal, vBounceVec);
 			GetVectorAngles(vBounceVec, vNewAngles);
-				
+
 			// PrintToChat(client, "Result: [%.2f, %.2f, %.2f] |%.2f|", vBounceVec[0], vBounceVec[1], vBounceVec[2], GetVectorLength(vBounceVec));
 			// groundresistance global
 			float grRes = cvNadeGroundRes.FloatValue;
@@ -588,13 +616,22 @@ int BounceConc2(int entity, float damagePos[3]) {
 					vBounceVec[i] *= grRes;
 				}
 			}
-			// PrintToServer("Angles: [%.2f, %.2f, %.2f] -> [%.2f, %.2f, %.2f]", vAngles[0], vAngles[1], vAngles[2], vNewAngles[0], vNewAngles[1], vNewAngles[2]);
-			// PrintToServer("Velocity: [%.2f, %.2f, %.2f] |%.2f| -> [%.2f, %.2f, %.2f] |%.2f|", vVelocity[0], vVelocity[1], vVelocity[2], GetVectorLength(vVelocity), vBounceVec[0], vBounceVec[1], vBounceVec[2], GetVectorLength(vBounceVec));
-				
+
+			// PrintToServer(
+			//	"Angles: [%.2f, %.2f, %.2f] -> [%.2f, %.2f, %.2f]",
+			//	vAngles[0], vAngles[1], vAngles[2], vNewAngles[0], vNewAngles[1], vNewAngles[2]
+			//);
+			// PrintToServer(
+			//	"Velocity: [%.2f, %.2f, %.2f] |%.2f| -> [%.2f, %.2f, %.2f] |%.2f|",
+			//	vVelocity[0], vVelocity[1], vVelocity[2], GetVectorLength(vVelocity),
+			//	vBounceVec[0], vBounceVec[1], vBounceVec[2], GetVectorLength(vBounceVec)
+			//);
+
 			TeleportEntity(entity, NULL_VECTOR, vNewAngles, vBounceVec);
 			g_iFrameTimer[client][number] = 0;
 		}
 	}
+
 	return 1;
 }
 
@@ -609,8 +646,10 @@ void ThrowNade(int id, bool thrown = true) {
 		if (cvConcDebug.BoolValue) { 
 			PrintToServer("info not found for concId %i", id);
 		}
+
 		return;
 	}
+
 	int client = nadeInfo[0];
 	int number = nadeInfo[1];
 	if (IsValidEntity(g_iNadeID[client][number])) {
@@ -651,6 +690,7 @@ void ThrowNade(int id, bool thrown = true) {
 							playerspeed[i] = 0.0;
 						}
 					}
+
 					if (playerspeed[2] < 0.0) {
 						playerspeed[2] = 0.0;
 					}
@@ -661,25 +701,28 @@ void ThrowNade(int id, bool thrown = true) {
 			if (sHeight!= 0.0) {
 				startpt[2] += sHeight;
 			}
+
 			TeleportEntity(g_iNadeID[client][number], startpt, angle, speed);
+
 		}
 		else {
 			float altstartpt[3];
 			GetClientAbsOrigin(client, altstartpt);
 			GetEntPropVector(client, Prop_Data, "m_vecVelocity", playerspeed);
 			ScaleVector(playerspeed, cvNadeHHDisDecrease.FloatValue);
-			
+
 			float pSpeedLen = GetVectorLength(playerspeed);
 			if (pSpeedLen > 288.0) {
-				pSpeedLen = 288.0/pSpeedLen;
+				pSpeedLen = 288.0 / pSpeedLen;
 				ScaleVector(playerspeed, pSpeedLen);
 			}
-			
+
 			SubtractVectors(altstartpt, playerspeed, altstartpt);
 			altstartpt[2] += cvNadeHHHeight.FloatValue;
 			TeleportEntity(g_iNadeID[client][number], altstartpt, angle, NULL_VECTOR);
 		}
-		if (cvNadeDifGrav.FloatValue!= 1.0) {
+
+		if (cvNadeDifGrav.FloatValue != 1.0) {
 			SetEntityGravity(g_iNadeID[client][number], cvNadeDifGrav.FloatValue);
 		}
 		
@@ -711,6 +754,7 @@ Action beepTimer(Handle timer, any concId) {
 	if (nadeInfo[0] <= -1 || nadeInfo[1] <= -1) {
 		return Plugin_Handled;
 	}
+
 	int client = nadeInfo[0];
 	int number = nadeInfo[1];
 	
@@ -748,6 +792,7 @@ Action beepTimer(Handle timer, any concId) {
 			NadeExplode(concId, false);
 		}
 	}
+
 	return Plugin_Handled;
 }
 
@@ -790,15 +835,18 @@ void NadeExplode(int concId, bool handHeld = false) {
 		FindPlayersInRange(center, radius, 0, client, !cvConcIgnore.BoolValue, cvConcIgnore.BoolValue ? -1 : g_iNadeID[client][number]);
 
 		int damage = 1;
-		for (int j = 1; j <= GetMaxClients(); j++) {
+		for (int j = 1; j <= MaxClients; j++) {
 			if (g_fPlayersInRange[j] > 0.0 && (j == client || !cvConcNoOtherPush.BoolValue)) {
 				ConcPlayer(j, center, radius, client, handHeld);
+
 				char tempString[32];
 				cvNadeIcon.GetString(tempString, sizeof(tempString));
+
 				DealDamage(j, damage, center, client, DMG_CRUSH, tempString);
 			}
 		}
 	}
+
 	g_fNadeTime[client][number] = -1.0;
 	g_iNadeType[client][number] = -1;
 	g_iNadeID[client][number] = -1;
@@ -812,6 +860,7 @@ void NadeExplode(int concId, bool handHeld = false) {
 		g_fLastOri[client][number][0][i] = 0.0;
 		g_fLastOri[client][number][1][i] = 0.0;
 	}
+
 	g_iFrameTimer[client][number] = 0;
 }
 
@@ -823,10 +872,13 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 	GetClientAbsOrigin(victim, pPos);
 	pPos[2] += cvConcBaseHeight.FloatValue;
 	GetEntPropVector(victim, Prop_Data, "m_vecVelocity", pSpd);
+
 	float distance = GetVectorDistance(pPos, center);
 	SubtractVectors(pPos, center, cPush);
 	NormalizeVector(cPush, cPush);
-	float pointDist = distance/radius;
+
+	float pointDist = distance / radius;
+
 	if (hh) { 
 		pointDist = pointDist*cvConcHHBoost.FloatValue + 0.25;
 		if (pointDist > 1.0) {
@@ -838,14 +890,15 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 	if (cvBlastDistanceMin.FloatValue > pointDist) {
 		pointDist = cvBlastDistanceMin.FloatValue;
 	}
+
 	float calcSpd = baseSpd*pointDist;
 	// PrintToChat(victim, "Dist %f, calcSpd %f, pointDist %f", distance, calcSpd, pointDist);
 	if (cvConcTest.BoolValue) {
 		// pointdist 1 = 1450speed, 1.25 = 1959speed, 0.5 = 712.5, 0 = 475
-		calcSpd = ((1.0/(baseSpd))*Pow(calcSpd, 2.0))+(baseSpd*0.5); 
+		calcSpd = ((1.0 / baseSpd) * Pow(calcSpd, 2.0)) + (baseSpd * 0.5); 
 	}
 	else {
-		calcSpd = -1.0*Cosine((calcSpd / baseSpd)*3.141592)*(baseSpd - (800.0 / 3.0))+(baseSpd + (800.0 / 3.0));
+		calcSpd = -1.0 * Cosine((calcSpd / baseSpd) * 3.141592) * (baseSpd - (800.0 / 3.0)) + (baseSpd + (800.0 / 3.0));
 	}
 	// PrintToChat(victim, "pointDist: %f, calcSpeed %i", pointDist, RoundFloat(calcSpd));
 	// PrintToChat(victim, "calcSpd after %f", calcSpd);
@@ -858,10 +911,11 @@ void ConcPlayer(int victim, float center[3], float radius, int attacker, bool hh
 	AddVectors(pSpd, cPush, pSpd);
 	
 	if (GetEntityFlags(victim) & FL_ONGROUND) {
-		if (pSpd[2] < 800.0/3.0) {
-			pSpd[2] = 800.0/3.0;
+		if (pSpd[2] < 800.0 / 3.0) {
+			pSpd[2] = 800.0 / 3.0;
 		}
 	}
+
 	// PrintToChat(victim, "Final: x %f, y %f, z %f", pSpd[0], pSpd[1], pSpd[2]);
 	TeleportEntity(victim, NULL_VECTOR, NULL_VECTOR, pSpd);
 }
@@ -870,6 +924,7 @@ bool IsClassAllowed(char playerClass[16]) {
 	if (!cvConcEnabled.BoolValue) {
 		return false;
 	}
+
 	char sKeywords[64];
 	char sKeyword[16][32];
 
@@ -880,6 +935,7 @@ bool IsClassAllowed(char playerClass[16]) {
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -889,8 +945,23 @@ void SetupConcBeams(float center[3], float radius) {
 	float height = (radius/2.0)/cvConcRings.FloatValue;
 
 	beamcenter = center;
+
 	for (int f = 0; f < cvConcRings.IntValue; f++) {
-		TE_SetupBeamRingPoint(beamcenter, 2.0, radius, g_iRingMOdel, g_iRingMOdel, 0, 1, 0.35, 6.0, 0.0, beamcolor, 0, FBEAM_FADEOUT);
+		TE_SetupBeamRingPoint(
+			beamcenter,
+			2.0,
+			radius,
+			g_iRingMOdel,
+			g_iRingMOdel,
+			0,
+			1,
+			0.35,
+			6.0,
+			0.0,
+			beamcolor,
+			0,
+			FBEAM_FADEOUT
+		);
 		TE_SendToAll(0.0);
 		beamcenter[2] += height;
 	}
@@ -908,6 +979,7 @@ void DealDamage(int victim, int damage, float loc[3], int attacker = 0, int dmg_
 
 		IntToString(damage, dmg_str, 16); 
 		IntToString(dmg_type, dmg_type_str, 32);
+
 		// PrintToChat(victim, "victim %i is valid and hit by attacker %i", victim, attacker);
 		int pointHurt = CreateEntityByName("point_hurt");
 		if (pointHurt) {
@@ -931,6 +1003,7 @@ void DealDamage(int victim, int damage, float loc[3], int attacker = 0, int dmg_
 	}
 }
 
+/*
 void AddFolderToDownloadTable(const char[] Directory, bool recursive = false) {
 	char FileName[64];
 	char Path[512];
@@ -942,14 +1015,17 @@ void AddFolderToDownloadTable(const char[] Directory, bool recursive = false) {
 			FormatEx(Path, sizeof(Path), "%s/%s", Directory, FileName);
 			AddFolderToDownloadTable(Path);
 			continue;
-		}                 
+		}
+
 		if (Type != FileType_File) {
 			continue;
 		}
+
 		FormatEx(Path, sizeof(Path), "%s/%s", Directory, FileName);
 		AddFileToDownloadsTable(Path);
 	}
 }
+*/
 
 void FindPlayersInRange(float location[3], float radius, int team, int self, bool trace, int donthit) {
 	Handle tr;
@@ -959,7 +1035,9 @@ void FindPlayersInRange(float location[3], float radius, int team, int self, boo
 
 	for (int i = 1; i <= MaxClients; i++) {
 		g_fPlayersInRange[i] = 0.0;
-		if (!IsClientInGame(i) || !IsPlayerAlive(i) || (!((team > 1 && (GetClientTeam(i) == team)) || team == 0 || i == self))) {
+		if (!IsClientInGame(i)
+		|| !IsPlayerAlive(i)
+		|| (!((team > 1 && (GetClientTeam(i) == team)) || team == 0 || i == self))) {
 			continue;
 		}
 
@@ -968,10 +1046,12 @@ void FindPlayersInRange(float location[3], float radius, int team, int self, boo
 			orig[j] -= location[j];
 			orig[j] *= orig[j];
 		}
+
 		distance = orig[0]+orig[1]+orig[2];
 		if (distance >= rsquare) {
 			continue;
 		}
+
 		if (trace) {
 			GetClientEyePosition(i, orig);
 			tr = TR_TraceRayFilterEx(location, orig, MASK_SOLID, RayType_EndPoint, TraceRayHitPlayers, donthit);
@@ -979,6 +1059,7 @@ void FindPlayersInRange(float location[3], float radius, int team, int self, boo
 				if (TR_GetFraction(tr) > 0.98) {
 					g_fPlayersInRange[i] = SquareRoot(distance)/radius;
 				}
+
 				delete tr;
 			}
 		}
@@ -998,13 +1079,17 @@ void resetClient(int client) {
 			if (IsValidEntity(g_iNadeID[client][i])) {
 				RemoveEdict(g_iNadeID[client][i]);
 			}
+
 			g_iNadeID[client][i] = -1;
 		}
+
 		g_fNadeTime[client][i] = -1.0;
 		g_bHolding[client][i] = false;
 		g_iNadeType[client][i] = -1;
+
 		delete g_hTimer[client][i];
 	}
+
 	g_fPersonalTimer[client] = -1.0;
 	g_bNadeDelay[client] = g_bButtonDown[client] = false;
 	g_iConcToUse[client] = -1;
@@ -1017,14 +1102,14 @@ void Entity_GetAbsOrigin(int entity, float vec[3]) {
 
 void classFormat(TFClassType class) {
 	switch(class) {
-		case TFClass_Scout: Format(g_classString, sizeof(g_classString), "scout");
-		case TFClass_Sniper: Format(g_classString, sizeof(g_classString), "sniper");
-		case TFClass_Soldier: Format(g_classString, sizeof(g_classString), "soldier");
-		case TFClass_DemoMan: Format(g_classString, sizeof(g_classString), "demoman");
-		case TFClass_Medic: Format(g_classString, sizeof(g_classString), "medic");
-		case TFClass_Heavy: Format(g_classString, sizeof(g_classString), "heavy");
-		case TFClass_Pyro: Format(g_classString, sizeof(g_classString), "pyro");
-		case TFClass_Spy: Format(g_classString, sizeof(g_classString), "spy");
-		case TFClass_Engineer: Format(g_classString, sizeof(g_classString), "engineer");
+		case TFClass_Scout:    strcopy(g_classString, sizeof(g_classString), "scout");
+		case TFClass_Sniper:   strcopy(g_classString, sizeof(g_classString), "sniper");
+		case TFClass_Soldier:  strcopy(g_classString, sizeof(g_classString), "soldier");
+		case TFClass_DemoMan:  strcopy(g_classString, sizeof(g_classString), "demoman");
+		case TFClass_Medic:    strcopy(g_classString, sizeof(g_classString), "medic");
+		case TFClass_Heavy:    strcopy(g_classString, sizeof(g_classString), "heavy");
+		case TFClass_Pyro:     strcopy(g_classString, sizeof(g_classString), "pyro");
+		case TFClass_Spy:      strcopy(g_classString, sizeof(g_classString), "spy");
+		case TFClass_Engineer: strcopy(g_classString, sizeof(g_classString), "engineer");
 	}
 }
