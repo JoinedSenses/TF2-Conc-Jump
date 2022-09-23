@@ -116,6 +116,8 @@ public void OnPluginStart() {
 	cvNadeStartHeight =     CreateConVar("sm_nade_startheight", "-24.0", "...");
 	cvConcDebug =           CreateConVar("sm_conc_debug", "0", "...");
 
+	AutoExecConfig(true);
+
 	RegConsoleCmd("+conc", Command_Conc);
 	RegConsoleCmd("-conc", Command_UnConc);
 	RegConsoleCmd("sm_conchelp", Command_ConcHelp);
